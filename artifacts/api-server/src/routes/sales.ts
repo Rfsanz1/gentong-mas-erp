@@ -51,6 +51,7 @@ router.get("/sales/summary", async (req, res) => {
     res.json({
       totalOrders: totalOrders.count,
       totalRevenue: Number(totalRevenue.total ?? 0),
+      pendingOrders: pending.count,
       pending: pending.count,
       confirmed: confirmed.count,
     });
@@ -75,13 +76,18 @@ router.get("/sales/orders", async (req, res) => {
         )
       );
     }
-    if (status && status !== "all") {
-      conditions.push(eq(salesOrdersTable.status, status as any));
-    }
-    if (type) {
-      conditions.push(eq(salesOrdersTable.type, type));
+    const validStatuses = ["pending", "confirmed", "delivered", "cancelled"];
+    if (status && status === "quotation") {
+      conditions.push(eq(salesOrdersTable.type, "quotation"));
     } else {
-      conditions.push(eq(salesOrdersTable.type, "order"));
+      if (status && status !== "all" && validStatuses.includes(status)) {
+        conditions.push(eq(salesOrdersTable.status, status as any));
+      }
+      if (type) {
+        conditions.push(eq(salesOrdersTable.type, type));
+      } else if (status !== "quotation") {
+        conditions.push(eq(salesOrdersTable.type, "order"));
+      }
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -135,45 +141,60 @@ router.get("/sales/orders/:id", async (req, res) => {
 
 router.post("/sales/orders", async (req, res) => {
   try {
-    const { items, ...orderData } = req.body;
-    const orderNumber = generateOrderNumber(orderData.type || "order");
+    const body = req.body;
+    const orderType = body.type || "order";
+    const orderNumber = generateOrderNumber(orderType);
 
-    const subtotal = (items || []).reduce(
-      (acc: number, item: any) => acc + Number(item.qty) * Number(item.harga),
+    const namaCustomer = body.namaCustomer || body.customer || "Unknown";
+    const noHp = body.noHp || body.phone || null;
+    const alamat = body.alamat || body.address || null;
+    const salesName = body.salesName || null;
+    const catatan = body.catatan || body.notes || null;
+
+    const rawItems: any[] = body.items || body.lines || [];
+    const normalizedItems = rawItems.map((item: any) => ({
+      productId: item.productId ?? null,
+      nama: item.nama || item.product || "Item",
+      qty: Number(item.qty) || 1,
+      harga: Number(item.harga ?? item.price ?? 0),
+    }));
+
+    const subtotal = normalizedItems.reduce(
+      (acc, item) => acc + item.qty * item.harga,
       0
     );
-    const tax = orderData.tax ? Number(orderData.tax) : 0;
-    const discount = orderData.discount ? Number(orderData.discount) : 0;
+    const tax = body.tax ? Number(body.tax) : 0;
+    const discount = body.discount ? Number(body.discount) : 0;
     const total = subtotal - discount + tax;
 
     const [newOrder] = await db
       .insert(salesOrdersTable)
       .values({
         orderNumber,
-        type: orderData.type || "order",
-        namaCustomer: orderData.namaCustomer,
-        noHp: orderData.noHp,
-        alamat: orderData.alamat,
-        salesName: orderData.salesName,
-        catatan: orderData.catatan,
+        type: orderType,
+        namaCustomer,
+        noHp,
+        alamat,
+        salesName,
+        catatan,
         status: "pending",
         subtotal: String(subtotal),
         discount: String(discount),
         tax: String(tax),
         total: String(total),
-        source: orderData.source || "erp",
+        source: body.source || "erp",
       })
       .returning();
 
-    if (items && items.length > 0) {
+    if (normalizedItems.length > 0) {
       await db.insert(salesOrderItemsTable).values(
-        items.map((item: any) => ({
+        normalizedItems.map((item) => ({
           orderId: newOrder.id,
-          productId: item.productId ?? null,
+          productId: item.productId,
           nama: item.nama,
-          qty: Number(item.qty),
+          qty: item.qty,
           harga: String(item.harga),
-          subtotal: String(Number(item.qty) * Number(item.harga)),
+          subtotal: String(item.qty * item.harga),
         }))
       );
     }
