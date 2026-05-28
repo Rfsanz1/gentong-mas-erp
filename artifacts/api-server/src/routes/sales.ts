@@ -326,6 +326,44 @@ router.post("/inventory/products", async (req, res) => {
   }
 });
 
+router.get("/sales/quotations", async (req, res) => {
+  try {
+    const { search, page = "1", limit = "50" } = req.query as Record<string, string>;
+    const offset = (Number(page) - 1) * Number(limit);
+    const conditions: any[] = [eq(salesOrdersTable.type, "quotation")];
+    if (search) {
+      conditions.push(
+        or(
+          ilike(salesOrdersTable.namaCustomer, `%${search}%`),
+          ilike(salesOrdersTable.orderNumber, `%${search}%`)
+        )
+      );
+    }
+    const where = and(...conditions);
+    const [quotations, [{ total }]] = await Promise.all([
+      db.select().from(salesOrdersTable).where(where).orderBy(desc(salesOrdersTable.createdAt)).limit(Number(limit)).offset(offset),
+      db.select({ total: count() }).from(salesOrdersTable).where(where),
+    ]);
+    res.json({ data: quotations, total, page: Number(page), limit: Number(limit) });
+  } catch (err) {
+    res.status(500).json({ error: "Gagal mengambil quotations" });
+  }
+});
+
+router.get("/sales/list", async (req, res) => {
+  try {
+    const orders = await db
+      .select()
+      .from(salesOrdersTable)
+      .where(eq(salesOrdersTable.type, "order"))
+      .orderBy(desc(salesOrdersTable.createdAt))
+      .limit(100);
+    res.json({ data: orders, total: orders.length });
+  } catch (err) {
+    res.status(500).json({ error: "Gagal mengambil daftar sales" });
+  }
+});
+
 router.get("/customers", async (req, res) => {
   try {
     const { search } = req.query as Record<string, string>;
