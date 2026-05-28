@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import AppShell from '@/layout/AppShell';
-import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
+import SettingsShell from '@/layout/SettingsShell';
 import { api } from '@/api';
 import {
   Settings, Save, RefreshCw, Building2, Phone, Mail, Globe,
@@ -132,7 +131,7 @@ export default function SettingsPage() {
   );
 
   return (
-    <AppShell {...SETTINGS_CONFIG} navItems={SETTINGS_NAV} activeHref="/settings">
+    <SettingsShell activeHref="/settings">
       <div className="p-6 space-y-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
@@ -318,6 +317,6 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
-    </AppShell>
+    </SettingsShell>
   );
 }

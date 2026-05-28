@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import AppShell from '@/layout/AppShell';
-import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
+import SettingsShell from '@/layout/SettingsShell';
 import { Shield, Plus, X, Check, Edit } from 'lucide-react';
 
 const C = '#546E7A';
@@ -68,7 +67,7 @@ export default function RolesPage() {
   };
 
   return (
-    <AppShell {...SETTINGS_CONFIG} navItems={SETTINGS_NAV} activeHref="/settings/roles">
+    <SettingsShell activeHref="/settings/roles">
       <div className="p-6 space-y-6 max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
@@ -182,6 +181,6 @@ export default function RolesPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </SettingsShell>
   );
 }

@@ -3,8 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import AppShell from '@/layout/AppShell';
-import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
+import SettingsShell from '@/layout/SettingsShell';
 import { api } from '@/api';
 import {
   Users, Plus, Search, X, Shield, RefreshCw, Edit2,
@@ -170,7 +169,7 @@ export default function UserManagementPage() {
   if (!token) return null;
 
   return (
-    <AppShell {...SETTINGS_CONFIG} navItems={SETTINGS_NAV} activeHref="/settings/users">
+    <SettingsShell activeHref="/settings/users">
       <div className="p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
 
         {/* Toast */}
@@ -529,6 +528,6 @@ export default function UserManagementPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </SettingsShell>
   );
 }

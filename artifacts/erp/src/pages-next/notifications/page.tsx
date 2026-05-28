@@ -3,8 +3,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import AppShell from '@/layout/AppShell';
-import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
+import SettingsShell from '@/layout/SettingsShell';
 import { NotificationList } from '@/components/erp-ui/notifications/NotificationList';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
@@ -20,7 +19,7 @@ export default function NotificationsPage() {
   if (!token) return null;
 
   return (
-    <AppShell {...SETTINGS_CONFIG} navItems={SETTINGS_NAV} activeHref="/notifications">
+    <SettingsShell activeHref="/notifications">
       <div className="p-6 lg:p-8 space-y-6 max-w-4xl mx-auto">
         <div>
           <h1 className="text-xl font-bold" style={{ color: '#1E1B4B' }}>Notifikasi</h1>
@@ -28,6 +27,6 @@ export default function NotificationsPage() {
         </div>
         <NotificationList />
       </div>
-    </AppShell>
+    </SettingsShell>
   );
 }

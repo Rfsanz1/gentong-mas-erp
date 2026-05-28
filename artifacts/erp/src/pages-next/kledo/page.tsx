@@ -3,8 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import AppShell from '@/layout/AppShell';
-import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
+import SettingsShell from '@/layout/SettingsShell';
 import { api } from '@/api';
 import {
   Zap, RefreshCw, CheckCircle, XCircle, Package, Users,
@@ -83,7 +82,7 @@ export default function KledoPage() {
   const getLatestLog = (type: string) => syncLogs.find(l => l.type === type);
 
   return (
-    <AppShell {...SETTINGS_CONFIG} navItems={SETTINGS_NAV} activeHref="/kledo">
+    <SettingsShell activeHref="/kledo">
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
 
         {/* Header */}
@@ -205,6 +204,6 @@ export default function KledoPage() {
         </div>
 
       </div>
-    </AppShell>
+    </SettingsShell>
   );
 }

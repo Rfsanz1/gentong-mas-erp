@@ -3,8 +3,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import AppShell from '@/layout/AppShell';
-import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
+import SettingsShell from '@/layout/SettingsShell';
 import { RolePermissionPanel } from '@/components/erp-ui/access/RolePermissionPanel';
 
 export default function AccessPage() {
@@ -17,7 +16,7 @@ export default function AccessPage() {
   if (!token) return null;
 
   return (
-    <AppShell {...SETTINGS_CONFIG} navItems={SETTINGS_NAV} activeHref="/access">
+    <SettingsShell activeHref="/access">
       <div className="p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
         <div>
           <h1 className="text-xl font-bold" style={{ color: '#1E1B4B' }}>Users & Akses</h1>
@@ -25,6 +24,6 @@ export default function AccessPage() {
         </div>
         <RolePermissionPanel />
       </div>
-    </AppShell>
+    </SettingsShell>
   );
 }
