@@ -69,7 +69,7 @@ export default function RootPage() {
       setTimeout(() => setMounted(true), 60);
     };
     init();
-  }, [token, user, loadProfile, logout, router]);
+  }, [token, user, loadProfile, logout, navigate]);
 
   if (!token || loading) return null;
 

@@ -19,7 +19,7 @@ export default function GudangPage() {
     if (!token) {
       navigate('/login');
     }
-  }, [token, router]);
+  }, [token, navigate]);
 
   useEffect(() => {
     if (!token) return;

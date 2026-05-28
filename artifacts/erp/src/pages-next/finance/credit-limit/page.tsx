@@ -70,7 +70,7 @@ export default function CreditLimitPage() {
             <p style={{ fontSize: 28, fontWeight: 700, color: '#c62828', marginTop: 4 }}>{stats.exceeded}</p>
           </div>
           <div style={{ background: 'rgba(255,152,0,.05)', borderRadius: 12, border: '1px solid rgba(255,152,0,.2)', padding: 20 }}>
-            <p style={{ color: '#e65100', fontSize: 13 }}>Peringatan (>80%)</p>
+            <p style={{ color: '#e65100', fontSize: 13 }}>Peringatan (&gt;80%)</p>
             <p style={{ fontSize: 28, fontWeight: 700, color: '#e65100', marginTop: 4 }}>{stats.warning}</p>
           </div>
         </div>

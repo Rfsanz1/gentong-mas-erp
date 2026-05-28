@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ModernLayout from '@/layout/ModernLayout';
 import { TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
+const API = '';
 function fmt(n: number) {
   return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(Math.round(Math.abs(n)));
 }

@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ModernLayout from '@/layout/ModernLayout';
 import { DollarSign, Package, TrendingUp, RefreshCw, Search, Download, ChevronDown } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
+const API = '';
 function fmt(n: number) { return new Intl.NumberFormat('id-ID').format(Math.round(n)); }
 function fmtCost(n: number) { return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(n); }
 

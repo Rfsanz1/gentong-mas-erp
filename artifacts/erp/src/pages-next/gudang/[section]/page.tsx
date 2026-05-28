@@ -15,7 +15,7 @@ export default function GudangSectionPage() {
 
   useEffect(() => {
     if (!token) navigate('/login');
-  }, [token, router]);
+  }, [token, navigate]);
 
   if (!token) return null;
 

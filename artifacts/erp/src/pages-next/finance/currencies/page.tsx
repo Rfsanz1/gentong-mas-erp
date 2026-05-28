@@ -97,7 +97,7 @@ export default function CurrenciesPage() {
                       <td className="px-4 py-3">
                         {!isBase ? (
                           editRates[c.code] !== undefined ? (
-                            <input type="number" className="w-24 rounded px-2 py-1 text-sm font-bold" style={{ border: '1.5px solid' + C, outline: 'none', color: '#1E1B4B' }} value={editRates[c.code]} onChange={e => setEditRates(r => ({ ...r, [c.code]: e.target.value })} />
+                            <input type="number" className="w-24 rounded px-2 py-1 text-sm font-bold" style={{ border: '1.5px solid' + C, outline: 'none', color: '#1E1B4B' }} value={editRates[c.code]} onChange={e => setEditRates(r => ({ ...r, [c.code]: e.target.value }))} />
                           ) : (
                             <span className="font-bold" style={{ color: '#1E1B4B' }}>Rp {fmt(c.rate)}</span>
                           )

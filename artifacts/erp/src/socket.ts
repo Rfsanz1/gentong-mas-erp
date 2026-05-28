@@ -10,7 +10,7 @@ export const getSocket = () => {
   const token = window.localStorage.getItem('erp_token');
 
   if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', {
+    socket = io(window.location.origin, {
       path: '/socket.io',
       transports: ['websocket'],
       autoConnect: false,

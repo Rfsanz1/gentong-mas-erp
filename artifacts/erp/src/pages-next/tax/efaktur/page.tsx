@@ -7,8 +7,7 @@ import {
   CheckCircle, Clock, AlertCircle, RefreshCw,
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
+const API = '';
 const STATUS_CONFIG = {
   DRAFT:    { label: 'Draft',    color: 'bg-gray-100 text-gray-600',    icon: Clock },
   UPLOADED: { label: 'Uploaded', color: 'bg-blue-100 text-blue-700',    icon: Upload },

@@ -1,7 +1,7 @@
 
 
 import { useState, useEffect } from 'react';
-import ModernLayout from '@/components/layout/ModernLayout';
+import ModernLayout from '@/layout/ModernLayout';
 import api from '@/api';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {

@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ModernLayout from '@/layout/ModernLayout';
 import { AlertTriangle, Clock, CheckCircle, TrendingDown, RefreshCw, Search, Download } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
+const API = '';
 function fmt(n: number) { return new Intl.NumberFormat('id-ID').format(Math.round(n)); }
 function fmtDate(d: string | Date | undefined) {
   if (!d) return '-';

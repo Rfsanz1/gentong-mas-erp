@@ -3,9 +3,10 @@ import jwt from "jsonwebtoken";
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const JWT_SECRET = process.env.JWT_SECRET || (IS_PRODUCTION ? null : "dev-only-secret-not-for-production");
 if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required");
+  throw new Error("JWT_SECRET environment variable is required in production");
 }
 
 const IS_DEMO = process.env.NODE_ENV !== "production";

@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ModernLayout from '@/layout/ModernLayout';
 import { Plus, Pencil, Trash2, CheckCircle, XCircle, Search } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
+const API = '';
 const TAX_TYPES = ['PPN','PPH21','PPH23','PPH25','PPH4A2'] as const;
 const TYPE_LABELS: Record<string, string> = {
   PPN: 'PPN', PPH21: 'PPh 21', PPH23: 'PPh 23', PPH25: 'PPh 25', PPH4A2: 'PPh 4(2)',
