@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ModernLayout from '@/components/layout/ModernLayout';
-import api from '@/lib/api';
+import api from '@/api';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   draft: { label: 'Draft', color: 'bg-slate-600 text-slate-200' },

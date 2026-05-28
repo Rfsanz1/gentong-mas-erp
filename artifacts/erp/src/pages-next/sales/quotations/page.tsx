@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { SALES_CONFIG, SALES_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { FileText, Plus, Search, RefreshCw, X, ChevronRight, Send, Check, Trash2 } from 'lucide-react';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {

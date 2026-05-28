@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 import AppShell from '@/layout/AppShell';
 import { WAREHOUSE_CONFIG, WAREHOUSE_NAV } from '@/nav-configs';
 import { useAuthStore } from '@/store/useAuthStore';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { ArrowDownRight, ArrowUpRight, ClipboardList, ClipboardCheck, Truck, Clock } from 'lucide-react';
 
 export default function GudangPage() {

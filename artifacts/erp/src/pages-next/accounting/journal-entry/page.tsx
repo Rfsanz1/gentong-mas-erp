@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ModernLayout } from '@/layout/ModernLayout';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 import {
   BookOpen, Plus, Search, RefreshCw, X, Check, AlertCircle,

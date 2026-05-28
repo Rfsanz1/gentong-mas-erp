@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 
 import { useAuthStore } from '@/store/useAuthStore';
 import { useModulesStore } from '@/store/useModulesStore';
-import { MODULES, ERP_Module } from '@/lib/modules-registry';
+import { MODULES, ERP_Module } from '@/modules-registry';
 import {
   Search, Star, CheckCircle, ArrowLeft, LayoutGrid,
   X, Lock, CheckCheck, Sparkles, ChevronRight, Check,

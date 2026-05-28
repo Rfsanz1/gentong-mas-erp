@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { ACCOUNTING_CONFIG, ACCOUNTING_NAV } from '@/nav-configs';
 import { Search, CreditCard, AlertTriangle, CheckCircle, Edit2, Save, X } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 const C = ACCOUNTING_CONFIG.appColor;
 const fmtIDR = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);

@@ -6,7 +6,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import { OdooLayout } from '@/layout/OdooLayout';
 import { Mail, Save, Send, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 export default function EmailGatewayPage() {
   const { token } = useAuthStore();

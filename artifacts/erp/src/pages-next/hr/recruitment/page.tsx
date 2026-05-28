@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ModernLayout from '@/components/layout/ModernLayout';
-import api from '@/lib/api';
+import api from '@/api';
 
 const APP_STAGES = [
   { key: 'new', label: 'Baru', color: 'bg-slate-600 text-slate-200' },

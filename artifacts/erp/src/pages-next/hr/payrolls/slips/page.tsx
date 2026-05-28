@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { PAYROLL_CONFIG, PAYROLL_NAV } from '@/nav-configs';
 import { Search, Download, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 const C = PAYROLL_CONFIG.appColor;
 const fmtIDR = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);

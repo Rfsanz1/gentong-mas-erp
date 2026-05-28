@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { ACCOUNTING_CONFIG, ACCOUNTING_NAV } from '@/nav-configs';
 import { Target, Plus, Search, RefreshCw, X, AlertTriangle } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 const C = ACCOUNTING_CONFIG.appColor;
 const fmt = (v: number) => Number(v).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });

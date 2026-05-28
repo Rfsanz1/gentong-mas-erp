@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 
 import { ModernLayout } from '@/layout/ModernLayout';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import {
   FileText, Plus, Trash2, Search, ChevronDown,
   ArrowLeft, Save, Package, Building2, Calculator,

@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { SALES_CONFIG, SALES_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { ShoppingCart, Plus, Search, RefreshCw, Zap, X, Trash2, ChevronDown } from 'lucide-react';
 
 const COLOR = SALES_CONFIG.appColor;

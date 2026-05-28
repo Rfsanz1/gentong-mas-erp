@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import {
   Zap, RefreshCw, CheckCircle, XCircle, Package, Users,
   FileText, Clock, AlertTriangle, Play, Database,

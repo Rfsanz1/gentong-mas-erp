@@ -1,7 +1,3 @@
-'use client';
-
-
-
 interface FeatureLink {
   emoji: string;
   label: string;
@@ -149,7 +145,7 @@ export default function FeatureHub({ moduleId, color, bgColor, gradient }: Props
       {/* Feature grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-0 divide-x divide-y" style={{ borderColor: '#F0EBF8' }}>
         {features.map((f, i) => (
-          <Link
+          <a
             key={i}
             href={f.href}
             className="flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors group"

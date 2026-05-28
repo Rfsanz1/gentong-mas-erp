@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { PAYROLL_CONFIG, PAYROLL_NAV } from '@/nav-configs';
 import { Plus, Play, CheckCircle, DollarSign, RefreshCw, Calendar, Users, X } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 const C = PAYROLL_CONFIG.appColor;
 

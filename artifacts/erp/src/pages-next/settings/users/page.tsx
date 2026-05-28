@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { SETTINGS_CONFIG, SETTINGS_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import {
   Users, Plus, Search, X, Shield, RefreshCw, Edit2,
   Trash2, Check, AlertCircle, Eye, EyeOff, UserCheck, UserX,

@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { ModernLayout } from '@/layout/ModernLayout';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { Warehouse, RefreshCw } from 'lucide-react';
 
 export default function WarehousesPage() {

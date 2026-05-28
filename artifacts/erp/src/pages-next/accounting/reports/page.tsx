@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ModernLayout } from '@/layout/ModernLayout';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 
 import { TrendingUp, RefreshCw, Download, CheckCircle } from 'lucide-react';
 

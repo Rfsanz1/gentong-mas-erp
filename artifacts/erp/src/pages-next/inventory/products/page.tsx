@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { INVENTORY_CONFIG, INVENTORY_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { Package, Search, Plus, RefreshCw } from 'lucide-react';
 
 export default function InventoryProductsPage() {

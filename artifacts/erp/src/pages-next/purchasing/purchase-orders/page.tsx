@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import { ModernLayout } from '@/layout/ModernLayout';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { TrendingUp, Plus, Search, RefreshCw, CheckCircle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {

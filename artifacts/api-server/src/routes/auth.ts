@@ -3,26 +3,34 @@ import jwt from "jsonwebtoken";
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "gentong-mas-erp-secret-2026";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required");
+}
 
-const DEMO_USERS = [
-  {
-    id: "1",
-    email: "admin@example.com",
-    password: "admin123",
-    name: "Administrator",
-    roles: ["admin"],
-    permissions: ["*"],
-  },
-  {
-    id: "2",
-    email: "user@example.com",
-    password: "user123",
-    name: "Staff User",
-    roles: ["staff"],
-    permissions: ["read"],
-  },
-];
+const IS_DEMO = process.env.NODE_ENV !== "production";
+
+const DEMO_USERS =
+  IS_DEMO
+    ? [
+        {
+          id: "1",
+          email: "admin@example.com",
+          password: "admin123",
+          name: "Administrator",
+          roles: ["admin"],
+          permissions: ["*"],
+        },
+        {
+          id: "2",
+          email: "user@example.com",
+          password: "user123",
+          name: "Staff User",
+          roles: ["staff"],
+          permissions: ["read"],
+        },
+      ]
+    : [];
 
 router.post("/login", (req, res) => {
   const { email, password } = req.body;

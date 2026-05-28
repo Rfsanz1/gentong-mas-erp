@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { RECRUITMENT_CONFIG, RECRUITMENT_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { Users, Search, RefreshCw, ChevronRight, Phone, Mail, Star } from 'lucide-react';
 
 const C = RECRUITMENT_CONFIG.appColor;

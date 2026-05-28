@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { OdooLayout } from '@/layout/OdooLayout';
 import { PageHeader } from '@/components/erp-ui/ui/PageHeader';
 import { StatCard } from '@/components/erp-ui/ui/StatCard';
-import api from '@/lib/api';
+import api from '@/api';
 import { Truck, ExternalLink, RefreshCw, Search, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react';
 
 const C = {

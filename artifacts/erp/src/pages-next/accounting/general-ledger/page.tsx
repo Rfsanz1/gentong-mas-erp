@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ModernLayout } from '@/layout/ModernLayout';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { Database, Search, RefreshCw, Download } from 'lucide-react';
 
 const TYPE_LABELS: Record<string, string> = {

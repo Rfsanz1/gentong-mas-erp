@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useAuthStore } from '@/store/useAuthStore';
 import AppShell from '@/layout/AppShell';
 import { CRM_CONFIG, CRM_NAV } from '@/nav-configs';
-import { api } from '@/lib/api';
+import { api } from '@/api';
 import { TrendingUp, Plus, Search, RefreshCw, X, DollarSign, Calendar, User } from 'lucide-react';
 
 const STAGES = ['Prospek', 'Kualifikasi', 'Penawaran', 'Negosiasi', 'Menang', 'Kalah'];
