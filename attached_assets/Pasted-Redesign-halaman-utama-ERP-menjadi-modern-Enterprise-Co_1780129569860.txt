@@ -1,0 +1,174 @@
+Redesign halaman utama ERP menjadi modern Enterprise Command Center untuk Gentong Mas ERP.
+
+JANGAN gunakan tampilan app launcher kosong seperti ERPNext default yang hanya berisi icon aplikasi.
+
+Konsep utama:
+Dashboard Monitoring + App Hub dalam satu halaman.
+
+Style:
+- Modern SaaS ERP
+- Odoo 18 + Linear + Stripe Dashboard
+- Clean, premium, enterprise
+- Rounded corners 16px
+- Soft shadows
+- Light background (#F8FAFC)
+- Responsive desktop first
+- Grid layout
+- Smooth hover animations
+
+Layout:
+
+HEADER
+- Logo Gentong Mas ERP
+- Global Search
+- Notification Center
+- User Profile
+- Status Sistem Online
+
+SECTION 1 - KPI OVERVIEW
+
+Tampilkan 6 KPI Card:
+
+1. Penjualan Hari Ini
+2. Order Aktif
+3. Pengiriman Berjalan
+4. Produk Stok Kritis
+5. Transaksi POS Hari Ini
+6. Marketplace Orders
+
+Setiap card memiliki:
+- Icon
+- Nilai utama
+- Persentase perubahan
+- Mini trend chart
+
+SECTION 2 - BUSINESS MONITORING
+
+Layout 2 kolom
+
+Kiri:
+Sales Performance Chart
+- Penjualan harian
+- Penjualan mingguan
+- Target vs Realisasi
+
+Kanan:
+Live Activity Feed
+
+Contoh aktivitas:
+
+14:30 Sales membuat SO-2026-001
+14:29 Gudang melakukan picking order
+14:25 Driver menerima tugas pengiriman
+14:20 Barang masuk dari supplier
+14:18 Transaksi POS berhasil
+14:15 Order Shopee berhasil sinkron
+
+Realtime timeline style.
+
+SECTION 3 - APP HUB
+
+Tampilkan modul ERP dalam bentuk modern cards.
+
+Grid 4 kolom.
+
+Modul:
+
+Sales
+POS
+Gudang
+Driver
+Purchasing
+Marketplace
+Finance
+CRM
+Customer
+Supplier
+Reports
+Settings
+
+Setiap card memiliki:
+- Icon besar
+- Nama modul
+- Deskripsi singkat
+- Jumlah aktivitas hari ini
+- Hover effect
+- Quick access button
+
+SECTION 4 - OPERATION CENTER
+
+Layout 3 kolom
+
+Kolom 1:
+Warehouse Monitoring
+- Barang Masuk
+- Barang Keluar
+- Transfer
+- Stock Opname
+
+Kolom 2:
+Delivery Monitoring
+- Driver Aktif
+- Pengiriman Berjalan
+- Terkirim Hari Ini
+- Keterlambatan
+
+Kolom 3:
+POS Monitoring
+- Kasir Aktif
+- Transaksi Hari Ini
+- Omset POS
+- Retur
+
+SECTION 5 - ALERT CENTER
+
+Card khusus alert.
+
+Prioritas warna:
+
+Merah:
+- Stok kritis
+- Order terlambat
+- Pengiriman terlambat
+
+Kuning:
+- PO menunggu approval
+- Sinkronisasi marketplace pending
+
+Hijau:
+- Backup berhasil
+- Sinkronisasi sukses
+
+SECTION 6 - QUICK ACTION
+
+Tombol cepat:
+
++ Buat Sales Order
++ Buat Purchase Order
++ Input Barang Masuk
++ Buat Pengiriman
++ Buka POS
++ Tambah Produk
+
+SIDEBAR MENU
+
+Dashboard
+Sales
+POS
+Gudang
+Driver
+Purchasing
+Marketplace
+CRM
+Finance
+Reports
+Settings
+
+Design Requirements:
+
+- Tidak boleh ada area kosong besar.
+- Dashboard harus terasa hidup dengan data realtime.
+- Owner harus bisa melihat kondisi bisnis tanpa membuka modul lain.
+- Modul tetap dapat dibuka dari App Hub.
+- Gunakan komponen dashboard modern setara Odoo Enterprise, Linear, Stripe Dashboard, dan Vercel Analytics.
+- Fokus pada operasional toko elektronik dan bahan bangunan Gentong Mas.
