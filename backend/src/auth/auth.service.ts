@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import * as nodemailer from 'nodemailer';
 import { PrismaService } from './prisma.service';
 import { JwtPayload } from './strategies/jwt.strategy';

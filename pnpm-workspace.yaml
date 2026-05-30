@@ -39,6 +39,8 @@ packages:
   - lib/*
   - lib/integrations/*
   - scripts
+  - backend
+  - frontend
 
 catalog:
   '@replit/vite-plugin-cartographer': ^0.5.1
@@ -73,6 +75,10 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - unrs-resolver
+  - '@prisma/client'
+  - prisma
+  - '@prisma/engines'
+  - '@nestjs/core'
 
 overrides:
   # replit uses linux-x64 only, we can exclude all other platforms
