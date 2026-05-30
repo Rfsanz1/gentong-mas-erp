@@ -40,13 +40,13 @@ outputType = "webview"
 name = "Backend (NestJS)"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd backend && npx nest start --watch"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && pnpm start:dev"
+waitForPort = 4000
 
 [agent]
 stack = "PNPM_WORKSPACE"

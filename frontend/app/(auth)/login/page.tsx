@@ -11,37 +11,34 @@ import { useAuthStore } from '@/store/auth.store';
 import type { AxiosError } from 'axios';
 import clsx from 'clsx';
 
-// ─── Validation schema ────────────────────────────────────────────────────
-
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Masukkan email yang valid'),
+  password: z.string().min(1, 'Password tidak boleh kosong'),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// ─── Types from API ───────────────────────────────────────────────────────
-
-interface Company {
-  id: string;
-  name: string;
-  logoUrl: string | null;
-}
-
-interface LoginResponse {
+// Shape returned by POST /api/auth/login (after the { success, data } envelope)
+interface LoginData {
   accessToken: string;
+  refreshToken: string;
+  token: string;
+  appRedirect: string;
   user: {
     id: string;
-    email: string;
     name: string | null;
-    is2FAEnabled: boolean;
+    email: string;
+    role: string;
+    roles: string[];
+    permissions: string[];
   };
-  requiresOtp?: boolean;
-  requiresTenantSelect?: boolean;
-  companies?: Company[];
 }
 
-// ─── Component ────────────────────────────────────────────────────────────
+interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  timestamp: string;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,49 +59,42 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { data } = await api.post<LoginResponse>('/auth/login', values);
+      const { data: envelope } = await api.post<ApiEnvelope<LoginData>>(
+        '/api/auth/login',
+        values,
+      );
 
-      // Case 1: 2FA required — send OTP and redirect to OTP page
-      if (data.requiresOtp) {
-        await api.post('/auth/otp/send', { userId: data.user.id });
-        router.push(`/otp?userId=${data.user.id}`);
-        return;
-      }
+      const { accessToken, refreshToken, user } = envelope.data;
 
-      // Case 2: Multiple companies — user must choose one
-      if (data.requiresTenantSelect) {
-        sessionStorage.setItem('userId', data.user.id);
-        sessionStorage.setItem('companies', JSON.stringify(data.companies));
-        router.push('/select-tenant');
-        return;
-      }
-
-      // Case 3: Single company — store auth and go to dashboard
       setAuth({
-        user: data.user,
-        accessToken: data.accessToken,
-        companyId: data.companies?.[0]?.id,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          roles: user.roles,
+          permissions: user.permissions,
+        },
+        accessToken,
+        refreshToken,
       });
+
+      // Backend sends appRedirect for role-based routing across different apps.
+      // For now we just go to /dashboard within this app.
       router.push('/dashboard');
     } catch (err) {
       const error = err as AxiosError<{ message: string }>;
-      const msg =
-        error.response?.data?.message ?? 'Login failed. Please try again.';
-      setServerError(typeof msg === 'string' ? msg : 'Login failed.');
+      const raw = error.response?.data?.message;
+      setServerError(typeof raw === 'string' ? raw : 'Login gagal. Coba lagi.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-    window.location.href = `${apiUrl}/auth/google`;
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-blue-100 px-4">
       <div className="w-full max-w-md">
-        {/* Logo / Branding */}
+        {/* Branding */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 shadow-lg mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,12 +103,11 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Gentong Mas ERP</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+          <p className="text-sm text-gray-500 mt-1">Masuk ke akun Anda</p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Server error banner */}
           {serverError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-700">{serverError}</p>
@@ -126,25 +115,21 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-            {/* Email */}
             <div>
               <label htmlFor="email" className="label">
-                Email address
+                Email
               </label>
               <input
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="you@company.com"
+                placeholder="admin@erp.com"
                 {...register('email')}
                 className={clsx('input-field', errors.email && 'input-error')}
               />
-              {errors.email && (
-                <p className="error-msg">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="error-msg">{errors.email.message}</p>}
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className="label">
                 Password
@@ -157,12 +142,9 @@ export default function LoginPage() {
                 {...register('password')}
                 className={clsx('input-field', errors.password && 'input-error')}
               />
-              {errors.password && (
-                <p className="error-msg">{errors.password.message}</p>
-              )}
+              {errors.password && <p className="error-msg">{errors.password.message}</p>}
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isLoading}
@@ -174,47 +156,17 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                   </svg>
-                  Signing in…
+                  Masuk…
                 </span>
               ) : (
-                'Sign in'
+                'Masuk'
               )}
             </button>
           </form>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-3 text-gray-400">or continue with</span>
-            </div>
-          </div>
-
-          {/* Google OAuth */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4
-                       border border-gray-300 rounded-lg shadow-sm text-sm font-medium
-                       text-gray-700 bg-white hover:bg-gray-50
-                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500
-                       transition-colors duration-200"
-          >
-            {/* Google SVG icon */}
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            Sign in with Google
-          </button>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          © {new Date().getFullYear()} Gentong Mas. All rights reserved.
+          © {new Date().getFullYear()} Gentong Mas. Hak cipta dilindungi.
         </p>
       </div>
     </div>

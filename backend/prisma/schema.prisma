@@ -1,81 +1,1585 @@
-// backend/prisma/schema.prisma
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  SYSTEM
+generator client {
+  provider = "prisma-client-js"
 }
+
+// ==================== AUTH & USERS ====================
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  // Nullable: users who only use Google OAuth won't have a password
-  password     String?
-  name         String?
-  googleId     String?  @unique
-  // 2FA via OTP email
-  is2FAEnabled Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  userTenants   UserTenant[]
-  otpCodes      OtpCode[]
-  refreshTokens RefreshToken[]
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String?
+  password  String
+  active    Boolean    @default(true)
+  roleId    String
+  role      Role       @relation(fields: [roleId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  orders    Order[]
+  auditLogs AuditLog[]
 }
 
-model Company {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  logoUrl   String?
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  @@id([roleId, permissionId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id])
+  action      String
+  resource    String
+  metadata    Json?
+  tableName   String?
+  recordId    String?
+  oldData     Json?
+  newData     Json?
+  ipAddress   String?
+  userAgent   String?
+  branchId    String?
+  createdAt   DateTime @default(now())
+}
+
+// ==================== MASTER DATA ====================
+
+model AppSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  userTenants UserTenant[]
 }
 
-// Junction table: which users belong to which companies and with what role
-model UserTenant {
-  id        String   @id @default(cuid())
-  userId    String
-  companyId String
-  role      Role     @default(ADMIN)
+model DriverArea {
+  id        Int      @id @default(autoincrement())
+  name      String
+  areas     Json     @default("[]")
   createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, companyId])
+  updatedAt DateTime @updatedAt
 }
 
-model OtpCode {
-  id        String   @id @default(cuid())
-  userId    String
-  code      String
-  // OTP expires 5 minutes after creation
-  expiresAt DateTime
-  // Mark as used to prevent replay attacks
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+// ==================== INVENTORY ENUMS ====================
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum CostingMethod {
+  FIFO
+  AVERAGE
+  STANDARD
 }
 
-model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  // Hashed token stored in DB
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+enum LandedCostSplitMethod {
+  BY_QTY
+  BY_VALUE
+  BY_WEIGHT
+}
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+// ==================== WAREHOUSE ====================
+// Central warehouse entity. Products are linked to warehouses
+// via the Stock model (many-to-many through Stock).
+
+model Warehouse {
+  id             String          @id @default(uuid())
+  code           String          @unique
+  name           String
+  address        String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  stocks         Stock[]
+  stockMovements StockMovement[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model ProductCategory {
+  id        String            @id @default(uuid())
+  code      String            @unique
+  name      String
+  parentId  String?
+  parent    ProductCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  ProductCategory[] @relation("CategoryTree")
+  products  Product[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model ProductUnit {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  symbol    String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// ==================== PRODUCT ====================
+// Products do NOT hold stock qty directly.
+// Stock is tracked per-warehouse via the Stock model.
+// All stock changes flow through StockMovement.
+
+model Product {
+  id                 String              @id @default(uuid())
+  sku                String              @unique
+  name               String
+  brand              String?
+  categoryId         String?
+  category           ProductCategory?    @relation(fields: [categoryId], references: [id])
+  unitId             String?
+  unit               ProductUnit?        @relation(fields: [unitId], references: [id])
+  hargaBeli          Decimal             @default(0) @db.Decimal(15, 2)
+  hargaJual          Decimal             @default(0) @db.Decimal(15, 2)
+  hargaKledo         Decimal             @default(0) @db.Decimal(15, 2)
+  stokMinimum        Int                 @default(0)
+  costingMethod      CostingMethod       @default(AVERAGE)
+  standardCost       Decimal             @default(0) @db.Decimal(15, 4)
+  currentAvgCost     Decimal             @default(0) @db.Decimal(15, 4)
+  kledoProductId     String?
+  isSpmBrand         Boolean             @default(false)
+  active             Boolean             @default(true)
+  description        String?
+  imageUrl           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  // Stock tracking (one product can exist in multiple warehouses)
+  stocks             Stock[]
+  orderItems         OrderItem[]
+  saleItems          SaleItem[]
+  stockMovements     StockMovement[]
+  stockOpnameItems   StockOpnameItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  goodsReceiptItems  GoodsReceiptItem[]
+  posProducts        PosProduct[]
+  stockValuations    StockValuation[]
+  stockLots          StockLot[]
+  landedCostItems    LandedCostItem[]
+}
+
+// ==================== STOCK ====================
+// Per-warehouse stock quantity for each product.
+// This is the single source of truth for available stock.
+// RULE: qty is only updated via updateStok() which always
+//       creates a matching StockMovement entry first.
+
+model Stock {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  qty         Decimal   @default(0) @db.Decimal(15, 4)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@unique([productId, warehouseId])
+}
+
+// ==================== STOCK MOVEMENT ====================
+// Immutable audit trail of all stock changes.
+// Every stock IN / OUT must produce a StockMovement record.
+
+model StockMovement {
+  id          String     @id @default(uuid())
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id])
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  type        String
+  qty         Decimal   @db.Decimal(15,4)
+  note        String?
+  referenceId String?
+  createdAt   DateTime   @default(now())
+}
+
+model StockValuation {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  date         DateTime
+  qty          Decimal  @db.Decimal(15, 4)
+  unitCost     Decimal  @db.Decimal(15, 4)
+  totalValue   Decimal  @db.Decimal(15, 2)
+  movementType String
+  referenceId  String?
+  createdAt    DateTime @default(now())
+}
+
+model StockLot {
+  id          String    @id @default(uuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  nomorLot    String
+  expiryDate  DateTime?
+  qtyAwal     Decimal   @db.Decimal(15, 4)
+  qtySisa     Decimal   @db.Decimal(15, 4)
+  unitCost    Decimal   @db.Decimal(15, 4)
+  referenceId String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@unique([productId, nomorLot])
+}
+
+model LandedCost {
+  id          String                @id @default(uuid())
+  purchaseId  String
+  deskripsi   String
+  amount      Decimal               @db.Decimal(15, 2)
+  splitMethod LandedCostSplitMethod
+  status      String                @default("draft")
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  items       LandedCostItem[]
+}
+
+model LandedCostItem {
+  id           String     @id @default(uuid())
+  landedCostId String
+  landedCost   LandedCost @relation(fields: [landedCostId], references: [id])
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id])
+  qty          Decimal    @db.Decimal(15, 4)
+  alokasiBiaya Decimal    @db.Decimal(15, 2)
+  createdAt    DateTime   @default(now())
+}
+
+model StockOpname {
+  id          String            @id @default(uuid())
+  date        DateTime
+  warehouseId String?
+  status      String            @default("draft")
+  note        String?
+  items       StockOpnameItem[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model StockOpnameItem {
+  id            String      @id @default(uuid())
+  stockOpnameId String
+  stockOpname   StockOpname @relation(fields: [stockOpnameId], references: [id])
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  stokSistem    Int
+  stokFisik     Int
+  selisih       Int
+  note          String?
+}
+
+// ==================== CUSTOMERS & SUPPLIERS ====================
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  province    String?
+  npwp        String?
+  kledoId     String?  @unique
+  creditLimit Decimal  @default(0) @db.Decimal(15, 2)
+  creditUsed  Decimal  @default(0) @db.Decimal(15, 2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+  sales       Sale[]
+}
+
+model Supplier {
+  id             String                @id @default(uuid())
+  code           String                @unique
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  city           String?
+  npwp           String?
+  bankName       String?
+  bankAccount    String?
+  active         Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  purchaseOrders PurchaseOrder[]
+  rfqs           RequestForQuotation[]
+  pricelist      VendorPricelist[]
+}
+
+// ==================== SALES & ORDERS ====================
+
+model Order {
+  id               Int       @id @default(autoincrement())
+  namaCustomer     String
+  noHp             String?
+  alamat           String?
+  catatan          String?
+  salesName        String?
+  userId           String?
+  user             User?     @relation(fields: [userId], references: [id])
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  totalHarga       Decimal   @default(0) @db.Decimal(15, 2)
+  status           String    @default("pending")
+  statusPengiriman String?
+  driverName       String?
+  fotoPengiriman   String?
+  lokasiToken      String?
+  lokasiLat        String?
+  lokasiLng        String?
+  lokasiUpdatedAt  DateTime?
+  kledoInvoiceId   String?   @unique
+  kledoSynced      Boolean   @default(false)
+  buktiTransferData String?
+  items            Json      @default("[]")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  orderItems       OrderItem[]
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  nama      String
+  qty       Int
+  harga     Decimal  @db.Decimal(15, 2)
+  subtotal  Decimal  @db.Decimal(15, 2)
+}
+
+model Sale {
+  id         String     @id @default(uuid())
+  noFaktur   String     @unique
+  customerId String?
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  salesName  String?
+  tanggal    DateTime
+  totalHarga Decimal    @default(0) @db.Decimal(15, 2)
+  diskon     Decimal    @default(0) @db.Decimal(15, 2)
+  pajak      Decimal    @default(0) @db.Decimal(15, 2)
+  grandTotal Decimal    @default(0) @db.Decimal(15, 2)
+  status     String     @default("draft")
+  kledoId    String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  items      SaleItem[]
+}
+
+model SaleItem {
+  id        String   @id @default(uuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id])
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  nama      String
+  qty       Int
+  harga     Decimal  @db.Decimal(15, 2)
+  subtotal  Decimal  @db.Decimal(15, 2)
+}
+
+// ==================== PURCHASING ====================
+
+model PurchaseOrder {
+  id            String              @id @default(uuid())
+  noPo          String              @unique
+  supplierId    String
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  warehouseId   String?
+  warehouse     Warehouse?          @relation(fields: [warehouseId], references: [id])
+  tanggal       DateTime
+  tanggalKirim  DateTime?
+  totalHarga    Decimal             @default(0) @db.Decimal(15, 2)
+  status        String              @default("draft")
+  note          String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  items         PurchaseOrderItem[]
+  goodsReceipts GoodsReceipt[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  productId       String?
+  product         Product?      @relation(fields: [productId], references: [id])
+  nama            String
+  qty             Int
+  hargaBeli       Decimal       @db.Decimal(15, 2)
+  subtotal        Decimal       @db.Decimal(15, 2)
+  qtyReceived     Int           @default(0)
+}
+
+model GoodsReceipt {
+  id              String             @id @default(uuid())
+  noGr            String             @unique
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  tanggal         DateTime
+  status          String             @default("draft")
+  note            String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  items           GoodsReceiptItem[]
+}
+
+model GoodsReceiptItem {
+  id             String       @id @default(uuid())
+  goodsReceiptId String
+  goodsReceipt   GoodsReceipt @relation(fields: [goodsReceiptId], references: [id])
+  productId      String?
+  product        Product?     @relation(fields: [productId], references: [id])
+  nama           String
+  qtyOrdered     Int
+  qtyReceived    Int
+}
+
+// ==================== FINANCE & ACCOUNTING ====================
+
+model ChartOfAccount {
+  id               String             @id @default(uuid())
+  code             String             @unique
+  name             String
+  type             String
+  parentId         String?
+  parent           ChartOfAccount?    @relation("CoaTree", fields: [parentId], references: [id])
+  children         ChartOfAccount[]   @relation("CoaTree")
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  journalLines     JournalEntryLine[]
+  bankTransactions BankTransaction[]
+  cashTransactions CashTransaction[]
+}
+
+model JournalEntry {
+  id          String             @id @default(uuid())
+  noJurnal    String             @unique
+  tanggal     DateTime
+  keterangan  String?
+  referenceId String?
+  type        String
+  total       Decimal            @default(0) @db.Decimal(15, 2)
+  status      String             @default("draft")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  lines       JournalEntryLine[]
+}
+
+model JournalEntryLine {
+  id             String         @id @default(uuid())
+  journalEntryId String
+  journalEntry   JournalEntry   @relation(fields: [journalEntryId], references: [id])
+  coaId          String
+  coa            ChartOfAccount @relation(fields: [coaId], references: [id])
+  debit          Decimal        @default(0) @db.Decimal(15, 2)
+  kredit         Decimal        @default(0) @db.Decimal(15, 2)
+  keterangan     String?
+}
+
+model BankAccount {
+  id           String            @id @default(uuid())
+  bankName     String
+  accountNo    String
+  accountName  String
+  balance      Decimal           @default(0) @db.Decimal(15, 2)
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  transactions BankTransaction[]
+}
+
+model BankTransaction {
+  id            String          @id @default(uuid())
+  bankAccountId String
+  bankAccount   BankAccount     @relation(fields: [bankAccountId], references: [id])
+  coaId         String?
+  coa           ChartOfAccount? @relation(fields: [coaId], references: [id])
+  tanggal       DateTime
+  type          String
+  amount        Decimal         @db.Decimal(15, 2)
+  keterangan    String?
+  referenceId   String?
+  createdAt     DateTime        @default(now())
+}
+
+model CashTransaction {
+  id          String          @id @default(uuid())
+  coaId       String?
+  coa         ChartOfAccount? @relation(fields: [coaId], references: [id])
+  tanggal     DateTime
+  type        String
+  amount      Decimal         @db.Decimal(15, 2)
+  keterangan  String?
+  referenceId String?
+  createdAt   DateTime        @default(now())
+}
+
+// ==================== HR & PAYROLL ====================
+
+model Employee {
+  id               String            @id @default(uuid())
+  nik              String            @unique
+  name             String
+  email            String?
+  phone            String?
+  address          String?
+  departemen       String?
+  jabatan          String?
+  tanggalMasuk     DateTime?
+  gapok            Decimal           @default(0) @db.Decimal(15, 2)
+  ptkpStatus       String            @default("TK/0")
+  status           String            @default("aktif")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  payrolls         Payroll[]
+  attendances      Attendance[]
+  leaveAllocations LeaveAllocation[]
+  leaveRequests    LeaveRequest[]
+  payrollSlips     PayrollSlip[]
+  bpjsConfig       BPJSConfig?
+}
+
+model Payroll {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  periode    String
+  gapok      Decimal  @default(0) @db.Decimal(15, 2)
+  tunjangan  Decimal  @default(0) @db.Decimal(15, 2)
+  potongan   Decimal  @default(0) @db.Decimal(15, 2)
+  netto      Decimal  @default(0) @db.Decimal(15, 2)
+  status     String   @default("draft")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Attendance {
+  id         String    @id @default(uuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  tanggal    DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  status     String    @default("hadir")
+  note       String?
+  createdAt  DateTime  @default(now())
+}
+
+// ==================== INTEGRATIONS ====================
+
+model KledoSyncLog {
+  id        String   @id @default(uuid())
+  type      String
+  status    String
+  message   String?
+  payload   Json?
+  response  Json?
+  createdAt DateTime @default(now())
+}
+
+model ShopeeOrder {
+  id            String   @id @default(uuid())
+  shopeeOrderId String   @unique
+  buyerName     String?
+  phone         String?
+  address       String?
+  items         Json     @default("[]")
+  totalHarga    Decimal  @default(0) @db.Decimal(15, 2)
+  status        String   @default("pending")
+  rawData       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String    @id @default(uuid())
+  recipient String
+  title     String
+  message   String
+  status    String    @default("pending")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ==================== POS ====================
+
+model PosUser {
+  id        String              @id @default(uuid())
+  username  String              @unique
+  password  String
+  name      String
+  role      String              @default("kasir")
+  active    Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  sessions  PosCashierSession[]
+  sales     PosSale[]
+}
+
+model PosCashierSession {
+  id         String    @id @default(uuid())
+  posUserId  String
+  posUser    PosUser   @relation(fields: [posUserId], references: [id])
+  openedAt   DateTime  @default(now())
+  closedAt   DateTime?
+  modalAwal  Decimal   @default(0) @db.Decimal(15, 2)
+  modalAkhir Decimal?  @db.Decimal(15, 2)
+  status     String    @default("open")
+  sales      PosSale[]
+}
+
+model PosCategory {
+  id        String       @id @default(uuid())
+  name      String
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  products  PosProduct[]
+}
+
+model PosProduct {
+  id         String        @id @default(uuid())
+  productId  String?
+  product    Product?      @relation(fields: [productId], references: [id])
+  categoryId String?
+  category   PosCategory?  @relation(fields: [categoryId], references: [id])
+  name       String
+  barcode    String?       @unique
+  hargaJual  Decimal       @db.Decimal(15, 2)
+  stok       Int           @default(0)
+  active     Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  saleItems  PosSaleItem[]
+}
+
+model PosSale {
+  id          String             @id @default(uuid())
+  noStruk     String             @unique
+  sessionId   String?
+  session     PosCashierSession? @relation(fields: [sessionId], references: [id])
+  posUserId   String?
+  posUser     PosUser?           @relation(fields: [posUserId], references: [id])
+  tanggal     DateTime           @default(now())
+  totalHarga  Decimal            @default(0) @db.Decimal(15, 2)
+  diskon      Decimal            @default(0) @db.Decimal(15, 2)
+  pajak       Decimal            @default(0) @db.Decimal(15, 2)
+  grandTotal  Decimal            @default(0) @db.Decimal(15, 2)
+  bayar       Decimal            @default(0) @db.Decimal(15, 2)
+  kembalian   Decimal            @default(0) @db.Decimal(15, 2)
+  metodeBayar String             @default("tunai")
+  status      String             @default("selesai")
+  createdAt   DateTime           @default(now())
+  items       PosSaleItem[]
+}
+
+model PosSaleItem {
+  id           String     @id @default(uuid())
+  saleId       String
+  sale         PosSale    @relation(fields: [saleId], references: [id])
+  posProductId String
+  posProduct   PosProduct @relation(fields: [posProductId], references: [id])
+  nama         String
+  qty          Int
+  harga        Decimal    @db.Decimal(15, 2)
+  subtotal     Decimal    @db.Decimal(15, 2)
+}
+
+// ==================== CRM ====================
+
+model Lead {
+  id              String        @id @default(uuid())
+  name            String
+  type            String        @default("lead")
+  stage           String        @default("new")
+  priority        Int           @default(0)
+  probability     Decimal       @default(0) @db.Decimal(5, 2)
+  expectedRevenue Decimal       @default(0) @db.Decimal(15, 2)
+  customerId      String?
+  salespersonId   String?
+  teamId          String?
+  team            SalesTeam?    @relation(fields: [teamId], references: [id])
+  phone           String?
+  email           String?
+  company         String?
+  source          String?
+  description     String?
+  closingDate     DateTime?
+  active             Boolean             @default(true)
+  lostReason      String?
+  status          String        @default("open")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  activities      CrmActivity[]
+}
+
+model SalesTeam {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  leaderId  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  leads     Lead[]
+}
+
+model CrmActivity {
+  id          String    @id @default(uuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id])
+  type        String
+  status      String    @default("planned")
+  doneDate    DateTime?
+  summary     String
+  dueDate     DateTime?
+  completedAt DateTime?
+  userId      String?
+  createdAt   DateTime  @default(now())
+}
+
+// ==================== PROJECT ====================
+
+model Project {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  status      String        @default("planning")
+  startDate   DateTime?
+  dueDate     DateTime?
+  managerId   String?
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  tasks       Task[]
+  milestones  Milestone[]
+  timesheets  Timesheet[]
+}
+
+
+model Milestone {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  name      String
+  dueDate   DateTime
+  isDone    Boolean  @default(false)
+  tasks     Task[]
+  createdAt DateTime @default(now())
+}
+
+model Timesheet {
+  id          String   @id @default(uuid())
+  projectId   String
+  taskId      String?
+  task        Task?     @relation(fields: [taskId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id])
+  employeeId  String?
+  date        DateTime
+  hours       Decimal  @db.Decimal(5, 2)
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+// ==================== HELPDESK ====================
+
+model HelpdeskTicket {
+  id          String    @id @default(uuid())
+  noTicket    String    @unique
+  subject     String
+  description String?
+  customerId  String?
+  assigneeId  String?
+  priority    Int       @default(0)
+  stage       String    @default("new")
+  rating      Int?
+  ratingComment String?
+  closedAt    DateTime?
+  teamId      String?
+  team        HelpdeskTeam? @relation(fields: [teamId], references: [id])
+  slaDeadline DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ==================== MANUFACTURING ====================
+
+model BillOfMaterial {
+  id          String        @id @default(uuid())
+  productId   String
+  qty         Decimal       @db.Decimal(15, 4)
+  type        String        @default("manufacture")
+  reference   String?
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  components  BomComponent[]
+  orders      ManufacturingOrder[]
+}
+
+model BomComponent {
+  id        String         @id @default(uuid())
+  bomId     String
+  bom       BillOfMaterial @relation(fields: [bomId], references: [id])
+  productId String
+  qty       Decimal        @db.Decimal(15, 4)
+  uom       String?
+}
+
+model ManufacturingOrder {
+  id        String         @id @default(uuid())
+  noMo      String         @unique
+  bomId     String
+  bom       BillOfMaterial @relation(fields: [bomId], references: [id])
+  qtyToProduce Decimal     @db.Decimal(15, 4)
+  status    String         @default("draft")
+  scheduledDate DateTime?
+  completedAt   DateTime?
+  qtyProduced   Decimal?  @db.Decimal(15, 4)
+  createdAt DateTime       @default(now())
+  workOrders    WorkOrder[]
+  updatedAt DateTime       @updatedAt
+}
+
+// ==================== RECRUITMENT ====================
+
+model JobPosition {
+  id           String        @id @default(uuid())
+  title        String
+  departemen   String?
+  description  String?
+  status       String        @default("open")
+  createdAt    DateTime      @default(now())
+  applications Application[]
+}
+
+model Application {
+  id            String      @id @default(uuid())
+  jobPositionId String
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id])
+  applicantName String
+  email         String?
+  phone         String?
+  stage         String      @default("new")
+  cv            String?
+  notes         String?
+  priority      Int           @default(0)
+  refuseReason  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// ==================== LEAVE ====================
+
+model LeaveType {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  maxDays     Int               @default(12)
+  isPaid      Boolean           @default(true)
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  allocations LeaveAllocation[]
+  requests    LeaveRequest[]
+}
+
+model LeaveAllocation {
+  id          String    @id @default(uuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year        Int
+  totalDays   Int       @default(0)
+  usedDays    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveRequest {
+  id          String    @id @default(uuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  days        Int
+  reason      String?
+  status      String    @default("pending")
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ==================== QUALITY ====================
+
+model QualityControlPoint {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  productId   String?
+  operationId String?
+  active      Boolean  @default(true)
+  operation   String?
+  createdAt   DateTime @default(now())
+  checks      QualityCheck[]
+}
+
+model QualityCheck {
+  id        String              @id @default(uuid())
+  qcpId     String
+  qcp       QualityControlPoint @relation(fields: [qcpId], references: [id])
+  lotId     String?
+  status    String              @default("todo")
+  measuredValue Decimal?  @db.Decimal(15, 4)
+  doneAt    DateTime?
+  notes     String?
+  checkedAt DateTime?
+  checkedBy String?
+  createdAt DateTime            @default(now())
+}
+
+// ==================== MAINTENANCE ====================
+
+model Equipment {
+  id              String               @id @default(uuid())
+  name            String
+  category        String?
+  serialNo        String?
+  location        String?
+  purchaseDate    DateTime?
+  warrantyDate    DateTime?
+  nextMaintenance DateTime?
+  active          Boolean              @default(true)
+  requests        MaintenanceRequest[]
+  createdAt       DateTime             @default(now())
+}
+
+model MaintenanceRequest {
+  id            String    @id @default(uuid())
+  noMr          String    @unique
+  equipmentId   String
+  equipment     Equipment @relation(fields: [equipmentId], references: [id])
+  name          String
+  type          String    @default("corrective")
+  priority      Int       @default(0)
+  requestDate   DateTime  @default(now())
+  scheduledDate DateTime?
+  closedDate    DateTime?
+  technicianId  String?
+  status        String    @default("new")
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ==================== FLEET ====================
+
+model Vehicle {
+  id              String           @id @default(uuid())
+  licensePlate    String           @unique
+  brand           String
+  model           String
+  year            Int?
+  fuelType        String           @default("bensin")
+  driverId        String?
+  currentOdometer Decimal          @default(0) @db.Decimal(10, 2)
+  active          Boolean          @default(true)
+  services        VehicleService[]
+  createdAt       DateTime         @default(now())
+}
+
+model VehicleService {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  type        String
+  vendor      String?
+  date        DateTime
+  odometer    Decimal? @db.Decimal(10, 2)
+  cost        Decimal  @default(0) @db.Decimal(15, 2)
+  notes       String?
+  nextService DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// ==================== PURCHASING EXTENSIONS ====================
+
+model RequestForQuotation {
+  id         String    @id @default(uuid())
+  noRfq      String    @unique
+  supplierId String
+  supplier   Supplier  @relation(fields: [supplierId], references: [id])
+  deadline   DateTime?
+  status     String    @default("draft")
+  items      RfqItem[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model RfqItem {
+  id        String              @id @default(uuid())
+  rfqId     String
+  rfq       RequestForQuotation @relation(fields: [rfqId], references: [id])
+  productId String?
+  nama      String
+  qty       Int
+  hargaBeli Decimal             @db.Decimal(15, 2)
+  subtotal  Decimal             @db.Decimal(15, 2)
+}
+
+model VendorPricelist {
+  id           String   @id @default(uuid())
+  supplierId   String
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  productId    String
+  harga        Decimal  @db.Decimal(15, 2)
+  minQty       Int      @default(1)
+  leadTimeDays Int      @default(0)
+  validFrom    DateTime?
+  validTo      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ReorderingRule {
+  id          String   @id @default(uuid())
+  productId   String
+  warehouseId String?
+  minQty      Int      @default(0)
+  maxQty      Int      @default(0)
+  qtyMultiple Int      @default(1)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== INVENTORY EXTENSIONS ====================
+
+model LotSerial {
+  id         String    @id @default(uuid())
+  productId  String
+  name       String
+  type       String    @default("lot")
+  qty        Decimal   @default(0) @db.Decimal(15, 2)
+  expiryDate DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model ScrapOrder {
+  id        String   @id @default(uuid())
+  noScrap   String   @unique
+  productId String
+  lotId     String?
+  qty       Int
+  reason    String?
+  status    String   @default("draft")
+  scrapDate DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+// ==================== SALES EXTENSIONS ====================
+
+model Quotation {
+  id            String          @id @default(uuid())
+  noQuotation   String          @unique
+  customerId    String?
+  salespersonId String?
+  validityDate  DateTime?
+  status        String          @default("draft")
+  subtotal      Decimal         @default(0) @db.Decimal(15, 2)
+  tax           Decimal         @default(0) @db.Decimal(15, 2)
+  total         Decimal         @default(0) @db.Decimal(15, 2)
+  notes         String?
+  items         QuotationItem[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model QuotationItem {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id])
+  productId   String?
+  description String
+  qty         Decimal   @db.Decimal(15, 2)
+  unitPrice   Decimal   @db.Decimal(15, 2)
+  discount    Decimal   @default(0) @db.Decimal(5, 2)
+  tax         Decimal   @default(0) @db.Decimal(15, 2)
+  subtotal    Decimal   @db.Decimal(15, 2)
+}
+
+model Pricelist {
+  id        String          @id @default(uuid())
+  name      String
+  currency  String          @default("IDR")
+  items     PricelistItem[]
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+}
+
+model PricelistItem {
+  id          String    @id @default(uuid())
+  pricelistId String
+  pricelist   Pricelist @relation(fields: [pricelistId], references: [id])
+  productId   String?
+  minQty      Int       @default(1)
+  price       Decimal   @db.Decimal(15, 2)
+  discount    Decimal   @default(0) @db.Decimal(5, 2)
+}
+
+model Commission {
+  id            String   @id @default(uuid())
+  salespersonId String
+  quotationId   String?
+  amount        Decimal  @db.Decimal(15, 2)
+  percentage    Decimal  @db.Decimal(5, 2)
+  status        String   @default("pending")
+  periode       String
+  createdAt     DateTime @default(now())
+}
+
+// ==================== TAX ENGINE ====================
+
+enum TaxType {
+  PPN
+  PPH21
+  PPH23
+  PPH25
+  PPH4A2
+}
+
+enum TaxLineType {
+  COLLECTED
+  PAID
+}
+
+enum EFakturStatus {
+  DRAFT
+  UPLOADED
+  APPROVED
+}
+
+model Tax {
+  id        String    @id @default(uuid())
+  kode      String    @unique
+  nama      String
+  tipe      TaxType
+  rate      Decimal   @db.Decimal(5, 2)
+  isActive  Boolean   @default(true)
+  accountId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  taxLines  TaxLine[]
+  efakturs  EFaktur[]
+}
+
+model TaxLine {
+  id            String      @id @default(uuid())
+  referenceId   String
+  referenceType String
+  taxId         String
+  tax           Tax         @relation(fields: [taxId], references: [id])
+  baseAmount    Decimal     @db.Decimal(15, 2)
+  taxAmount     Decimal     @db.Decimal(15, 2)
+  tipe          TaxLineType
+  createdAt     DateTime    @default(now())
+}
+
+model EFaktur {
+  id            String        @id @default(uuid())
+  nomorFaktur   String        @unique
+  tanggal       DateTime
+  taxId         String?
+  tax           Tax?          @relation(fields: [taxId], references: [id])
+  referenceId   String?
+  npwpPembeli   String?
+  namaPembeli   String?
+  nilaiDPP      Decimal       @db.Decimal(15, 2)
+  nilaiPPN      Decimal       @db.Decimal(15, 2)
+  status        EFakturStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// ==================== DOUBLE-ENTRY ACCOUNTING ====================
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum FiscalStatus {
+  OPEN
+  CLOSED
+}
+
+model Account {
+  id            String      @id @default(uuid())
+  code          String      @unique
+  name          String
+  type          AccountType
+  parentId      String?
+  parent        Account?    @relation("AccountTree", fields: [parentId], references: [id])
+  children      Account[]   @relation("AccountTree")
+  description   String?
+  isActive      Boolean     @default(true)
+  normalBalance String      @default("DEBIT")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  journalLines  JournalLine[]
+}
+
+model Journal {
+  id          String        @id @default(uuid())
+  nomor       String        @unique
+  tanggal     DateTime
+  referensi   String?
+  deskripsi   String?
+  status      JournalStatus @default(DRAFT)
+  createdById String?
+  reversalOf  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  lines       JournalLine[]
+}
+
+model JournalLine {
+  id        String   @id @default(uuid())
+  journalId String
+  journal   Journal  @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id])
+  debit     Decimal  @default(0) @db.Decimal(15, 2)
+  kredit    Decimal  @default(0) @db.Decimal(15, 2)
+  deskripsi String?
+  createdAt DateTime @default(now())
+}
+
+model FiscalYear {
+  id        String         @id @default(uuid())
+  nama      String
+  startDate DateTime
+  endDate   DateTime
+  status    FiscalStatus   @default(OPEN)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  periods   FiscalPeriod[]
+}
+
+model FiscalPeriod {
+  id           String       @id @default(uuid())
+  fiscalYearId String
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id])
+  bulan        Int
+  tahun        Int
+  startDate    DateTime
+  endDate      DateTime
+  status       FiscalStatus @default(OPEN)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ==================== PAYROLL ====================
+
+enum PayrollComponentType {
+  BASIC
+  ALLOWANCE
+  DEDUCTION
+  OVERTIME
+}
+
+enum PayrollPeriodStatus {
+  DRAFT
+  CALCULATED
+  APPROVED
+  PAID
+}
+
+enum SlipStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model PayrollComponent {
+  id        String               @id @default(uuid())
+  nama      String
+  tipe      PayrollComponentType
+  formula   String               @default("")
+  isActive  Boolean              @default(true)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  lines     PayrollSlipLine[]
+}
+
+model PayrollPeriod {
+  id        String              @id @default(uuid())
+  bulan     Int
+  tahun     Int
+  status    PayrollPeriodStatus @default(DRAFT)
+  note      String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  slips     PayrollSlip[]
+  @@unique([bulan, tahun])
+}
+
+model PayrollSlip {
+  id               String        @id @default(uuid())
+  employeeId       String
+  employee         Employee      @relation(fields: [employeeId], references: [id])
+  periodId         String
+  period           PayrollPeriod @relation(fields: [periodId], references: [id])
+  gajiPokok        Decimal       @default(0) @db.Decimal(15, 2)
+  totalTunjangan   Decimal       @default(0) @db.Decimal(15, 2)
+  totalPotongan    Decimal       @default(0) @db.Decimal(15, 2)
+  bpjsKesEmployee  Decimal       @default(0) @db.Decimal(15, 2)
+  bpjsKesEmployer  Decimal       @default(0) @db.Decimal(15, 2)
+  bpjsTKEmployee   Decimal       @default(0) @db.Decimal(15, 2)
+  bpjsTKEmployer   Decimal       @default(0) @db.Decimal(15, 2)
+  totalPPh21       Decimal       @default(0) @db.Decimal(15, 2)
+  netSalary        Decimal       @default(0) @db.Decimal(15, 2)
+  status           SlipStatus    @default(DRAFT)
+  journalId        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  lines            PayrollSlipLine[]
+  @@unique([employeeId, periodId])
+}
+
+model PayrollSlipLine {
+  id          String           @id @default(uuid())
+  slipId      String
+  slip        PayrollSlip      @relation(fields: [slipId], references: [id], onDelete: Cascade)
+  componentId String?
+  component   PayrollComponent? @relation(fields: [componentId], references: [id])
+  amount      Decimal          @db.Decimal(15, 2)
+  deskripsi   String
+  createdAt   DateTime         @default(now())
+}
+
+model BPJSConfig {
+  id                 String   @id @default(uuid())
+  employeeId         String   @unique
+  employee           Employee @relation(fields: [employeeId], references: [id])
+  bpjsKesEmployee    Decimal  @default(1) @db.Decimal(5, 2)
+  bpjsKesEmployer    Decimal  @default(4) @db.Decimal(5, 2)
+  bpjsTKJHTEmployee  Decimal  @default(2) @db.Decimal(5, 2)
+  bpjsTKJHTEmployer  Decimal  @default(3.7) @db.Decimal(5, 2)
+  bpjsTKJKK          Decimal  @default(0.24) @db.Decimal(5, 2)
+  bpjsTKJKM          Decimal  @default(0.3) @db.Decimal(5, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// ==================== FIXED ASSET MANAGEMENT ====================
+
+enum DepreciasiMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+}
+
+enum AssetStatus {
+  ACTIVE
+  DISPOSED
+  SOLD
+}
+
+model FixedAsset {
+  id                  String           @id @default(uuid())
+  kode                String           @unique
+  nama                String
+  kategori            String
+  tanggalPerolehan    DateTime
+  nilaiPerolehan      Decimal          @db.Decimal(15, 2)
+  nilaiResidu         Decimal          @default(0) @db.Decimal(15, 2)
+  umurEkonomi         Int
+  metodeDepresiasi    DepreciasiMethod @default(STRAIGHT_LINE)
+  accountAssetId      String?
+  accountDepreciasiId String?
+  accountAkumDepId    String?
+  branchId            String?
+  status              AssetStatus      @default(ACTIVE)
+  note                String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  depreciations       AssetDepreciation[]
+}
+
+model AssetDepreciation {
+  id               String     @id @default(uuid())
+  assetId          String
+  asset            FixedAsset @relation(fields: [assetId], references: [id])
+  bulan            Int
+  tahun            Int
+  bebanDepresiasi  Decimal    @db.Decimal(15, 2)
+  akumDepresiasi   Decimal    @db.Decimal(15, 2)
+  nilaiBuku        Decimal    @db.Decimal(15, 2)
+  journalId        String?
+  createdAt        DateTime   @default(now())
+  @@unique([assetId, bulan, tahun])
+}
+
+// ==================== BUDGET ====================
+
+enum BudgetStatus {
+  DRAFT
+  APPROVED
+}
+
+model Budget {
+  id           String       @id @default(uuid())
+  nama         String
+  fiscalYearId String?
+  departemenId String?
+  status       BudgetStatus @default(DRAFT)
+  note         String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  lines        BudgetLine[]
+}
+
+model BudgetLine {
+  id        String  @id @default(uuid())
+  budgetId  String
+  budget    Budget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  accountId String
+  bulan     Int
+  amount    Decimal @db.Decimal(15, 2)
+}
+
+// ==================== COMPANY & BRANCH ====================
+
+model Company {
+  id              String   @id @default(uuid())
+  nama            String
+  npwp            String?
+  alamat          String?
+  logo            String?
+  defaultCurrency String   @default("IDR")
+  timezone        String   @default("Asia/Jakarta")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  branches        Branch[]
+}
+
+model Branch {
+  id           String  @id @default(uuid())
+  companyId    String
+  company      Company @relation(fields: [companyId], references: [id])
+  kode         String  @unique
+  nama         String
+  alamat       String?
+  isHeadOffice Boolean @default(false)
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ==================== HELPDESK TEAM ====================
+model HelpdeskTeam {
+  id        String           @id @default(uuid())
+  name      String
+  active    Boolean          @default(true)
+  slaHours  Int              @default(24)
+  createdAt DateTime         @default(now())
+  tickets   HelpdeskTicket[]
+}
+
+// ==================== WORK CENTER & WORK ORDER ====================
+model WorkCenter {
+  id         String      @id @default(uuid())
+  code       String?     @unique
+  name       String
+  active     Boolean     @default(true)
+  capacity   Int         @default(1)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  workOrders WorkOrder[]
+}
+
+model WorkOrder {
+  id           String       @id @default(uuid())
+  moId         String
+  mo           ManufacturingOrder @relation(fields: [moId], references: [id])
+  workCenterId String?
+  workCenter   WorkCenter?  @relation(fields: [workCenterId], references: [id])
+  sequence     Int          @default(0)
+  durationMin  Decimal      @default(0) @db.Decimal(10, 2)
+  status       String       @default("draft")
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+}
+
+// ==================== QUALITY ALERT ====================
+model QualityAlert {
+  id          String   @id @default(uuid())
+  subject     String
+  description String?
+  stage       String   @default("new")
+  priority    Int      @default(0)
+  productId   String?
+  assigneeId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== TASK (PROJECT MANAGEMENT) ====================
+model Task {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  milestoneId String?
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
+  parentId    String?
+  parent      Task?     @relation("TaskSubtasks", fields: [parentId], references: [id])
+  subtasks    Task[]    @relation("TaskSubtasks")
+  title       String
+  description String?
+  assignedTo  String?
+  assigneeId  String?
+  stage       String    @default("todo")
+  status      String    @default("todo")
+  priority    Int       @default(0)
+  active      Boolean   @default(true)
+  dueDate     DateTime?
+  timesheets  Timesheet[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

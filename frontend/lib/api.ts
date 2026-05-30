@@ -13,7 +13,6 @@ const BASE_URL =
 
 // Track if a token refresh is already in progress to avoid race conditions
 let isRefreshing = false;
-// Queue of requests that failed with 401 while a refresh was in progress
 let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (err: unknown) => void;
@@ -21,19 +20,31 @@ let failedQueue: Array<{
 
 function processQueue(error: unknown, token: string | null): void {
   failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else if (token) {
-      resolve(token);
-    }
+    if (error) reject(error);
+    else if (token) resolve(token);
   });
   failedQueue = [];
 }
 
+/**
+ * Unwrap the standard API envelope: { success, data, timestamp }
+ * The backend's ResponseInterceptor wraps every response in this shape.
+ */
+export function unwrap<T>(response: { data: T } | T): T {
+  if (
+    response !== null &&
+    typeof response === 'object' &&
+    'data' in (response as object)
+  ) {
+    return (response as { data: T }).data;
+  }
+  return response as T;
+}
+
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true, // Send httpOnly refreshToken cookie automatically
   headers: { 'Content-Type': 'application/json' },
+  // No withCredentials — tokens are in Authorization header, not cookies
 });
 
 // ─── Request interceptor: attach access token ─────────────────────────────
@@ -49,7 +60,7 @@ api.interceptors.request.use(
   (error: AxiosError) => Promise.reject(error),
 );
 
-// ─── Response interceptor: refresh token on 401 ──────────────────────────
+// ─── Response interceptor: auto-refresh on 401 ───────────────────────────
 
 api.interceptors.response.use(
   (response) => response,
@@ -58,10 +69,8 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Only attempt refresh on 401 and only once per request
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // Another refresh is in progress — queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token: string) => {
@@ -79,21 +88,28 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // The refreshToken cookie is sent automatically via withCredentials
-        const { data } = await api.post<{ accessToken: string }>('/auth/refresh');
-        const newToken = data.accessToken;
+        const refreshToken = useAuthStore.getState().refreshToken;
+        if (!refreshToken) throw new Error('No refresh token');
 
-        useAuthStore.getState().setAccessToken(newToken);
-        processQueue(null, newToken);
+        // Backend expects refreshToken in the request body (not a cookie)
+        const { data } = await api.post<{
+          data: { accessToken: string; refreshToken: string };
+        }>('/api/auth/refresh', { refreshToken });
 
-        // Retry the original failed request with the new token
+        const { accessToken: newAccess, refreshToken: newRefresh } = data.data;
+
+        useAuthStore.getState().setAccessToken(newAccess);
+        // Also update refreshToken in store
+        useAuthStore.setState({ refreshToken: newRefresh });
+
+        processQueue(null, newAccess);
+
         if (originalRequest.headers) {
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          originalRequest.headers['Authorization'] = `Bearer ${newAccess}`;
         }
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // Refresh failed — clear auth state and redirect to login
         useAuthStore.getState().clearAuth();
         if (typeof window !== 'undefined') {
           window.location.href = '/login';

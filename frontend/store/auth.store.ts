@@ -7,64 +7,63 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string | null;
-  is2FAEnabled: boolean;
+  role: string;
+  roles: string[];
+  permissions: string[];
 }
 
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
-  companyId: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
 
-  // Actions
   setAuth: (params: {
     user: AuthUser;
     accessToken: string;
-    companyId?: string;
+    refreshToken: string;
   }) => void;
   setAccessToken: (token: string) => void;
   clearAuth: () => void;
 }
 
-/**
- * Zustand store with localStorage persistence.
- * Only non-sensitive data is persisted; the accessToken is intentionally
- * kept in memory (not persisted) — it expires in 15 min anyway.
- * The refreshToken lives in a httpOnly cookie managed by the browser.
- */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
       accessToken: null,
-      companyId: null,
+      refreshToken: null,
       isAuthenticated: false,
 
-      setAuth: ({ user, accessToken, companyId }) =>
-        set({
-          user,
-          accessToken,
-          companyId: companyId ?? null,
-          isAuthenticated: true,
-        }),
+      setAuth: ({ user, accessToken, refreshToken }) => {
+        // Set a lightweight presence cookie so Next.js middleware can detect auth
+        if (typeof document !== 'undefined') {
+          document.cookie = `gm_auth=1; path=/; max-age=${7 * 24 * 3600}; samesite=strict`;
+        }
+        set({ user, accessToken, refreshToken, isAuthenticated: true });
+      },
 
       setAccessToken: (token) => set({ accessToken: token }),
 
-      clearAuth: () =>
+      clearAuth: () => {
+        if (typeof document !== 'undefined') {
+          document.cookie = 'gm_auth=; path=/; max-age=0';
+        }
         set({
           user: null,
           accessToken: null,
-          companyId: null,
+          refreshToken: null,
           isAuthenticated: false,
-        }),
+        });
+      },
     }),
     {
       name: 'gentong-mas-auth',
       storage: createJSONStorage(() => localStorage),
-      // Only persist user + companyId — NOT accessToken (short-lived, memory-only)
       partialize: (state) => ({
         user: state.user,
-        companyId: state.companyId,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     },

@@ -6,19 +6,27 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/lib/api';
 
+const ROLE_BADGE: Record<string, string> = {
+  admin: 'bg-purple-100 text-purple-700',
+  owner: 'bg-indigo-100 text-indigo-700',
+  'super admin': 'bg-red-100 text-red-700',
+  sales: 'bg-blue-100 text-blue-700',
+  gudang: 'bg-green-100 text-green-700',
+  kasir: 'bg-yellow-100 text-yellow-700',
+  driver: 'bg-orange-100 text-orange-700',
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, clearAuth, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    }
+    if (!isAuthenticated) router.push('/login');
   }, [isAuthenticated, router]);
 
   const handleLogout = async () => {
     try {
-      await api.post('/auth/logout');
+      await api.get('/api/auth/me'); // sanity check — optional
     } finally {
       clearAuth();
       router.push('/login');
@@ -27,9 +35,13 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
+  const roleColor =
+    ROLE_BADGE[user.role?.toLowerCase()] ?? 'bg-gray-100 text-gray-700';
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      {/* Nav */}
+      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,32 +51,60 @@ export default function DashboardPage() {
           </div>
           <span className="font-semibold text-gray-900">Gentong Mas ERP</span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">
-            {user.name ?? user.email}
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">{user.name ?? user.email}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor}`}>
+            {user.role}
           </span>
           <button
             onClick={() => void handleLogout()}
             className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
-            Sign out
+            Keluar
           </button>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 py-12">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">
+                Selamat datang, {user.name ?? user.email}!
+              </h2>
+              <p className="text-gray-500 text-sm mb-4">
+                Autentikasi berhasil. Anda login sebagai <strong>{user.role}</strong>.
+              </p>
+
+              {user.permissions.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">
+                    Permissions ({user.permissions.length})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {user.permissions.slice(0, 12).map((p) => (
+                      <span
+                        key={p}
+                        className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
+                      >
+                        {p}
+                      </span>
+                    ))}
+                    {user.permissions.length > 12 && (
+                      <span className="text-xs text-gray-400">
+                        +{user.permissions.length - 12} lainnya
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Welcome, {user.name ?? user.email}!
-          </h2>
-          <p className="text-gray-500">
-            You are successfully authenticated. Build your ERP features here.
-          </p>
         </div>
       </main>
     </div>
