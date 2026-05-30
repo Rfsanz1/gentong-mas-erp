@@ -47,7 +47,7 @@ export class AuthController {
       example: {
         accessToken: 'eyJhbGci...',
         refreshToken: 'eyJhbGci...',
-        user: { id: 'uuid', name: 'Admin', email: 'admin@erp.com', role: 'admin' },
+        user: { id: 'uuid', name: 'Admin', email: 'admin@gentongmas.com', role: 'admin' },
       },
     },
   })

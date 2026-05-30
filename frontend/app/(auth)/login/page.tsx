@@ -152,7 +152,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="admin@erp.com"
+                placeholder="admin@gentongmas.com"
                 {...register('email')}
                 className={clsx('input-field', errors.email && 'input-error')}
               />
