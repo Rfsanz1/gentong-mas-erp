@@ -8,8 +8,9 @@ import axios, {
 } from 'axios';
 import { useAuthStore } from '@/store/auth.store';
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+// Empty string = relative URL; Next.js rewrites /api/* → backend server-side.
+// This works in both local dev and Replit (no hardcoded ports exposed to browser).
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 // Track if a token refresh is already in progress to avoid race conditions
 let isRefreshing = false;
