@@ -10,17 +10,25 @@ generator client {
 // ==================== AUTH & USERS ====================
 
 model User {
-  id        String     @id @default(uuid())
-  email     String     @unique
-  name      String?
-  password  String
-  active    Boolean    @default(true)
-  roleId    String
-  role      Role       @relation(fields: [roleId], references: [id])
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  orders    Order[]
-  auditLogs AuditLog[]
+  id            String        @id @default(uuid())
+  email         String        @unique
+  name          String?
+  password      String
+  active        Boolean       @default(true)
+  roleId        String
+  role          Role          @relation(fields: [roleId], references: [id])
+  // Google OAuth
+  googleId      String?       @unique
+  // Email OTP 2FA
+  is2FAEnabled  Boolean       @default(false)
+  otpCode       String?
+  otpExpiry     DateTime?
+  // Multi-tenant
+  companies     UserCompany[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  orders        Order[]
+  auditLogs     AuditLog[]
 }
 
 model Role {
@@ -1486,29 +1494,40 @@ model BudgetLine {
 // ==================== COMPANY & BRANCH ====================
 
 model Company {
-  id              String   @id @default(uuid())
+  id              String        @id @default(uuid())
   nama            String
   npwp            String?
   alamat          String?
   logo            String?
-  defaultCurrency String   @default("IDR")
-  timezone        String   @default("Asia/Jakarta")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  defaultCurrency String        @default("IDR")
+  timezone        String        @default("Asia/Jakarta")
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   branches        Branch[]
+  users           UserCompany[]
 }
 
 model Branch {
-  id           String  @id @default(uuid())
+  id           String   @id @default(uuid())
   companyId    String
-  company      Company @relation(fields: [companyId], references: [id])
-  kode         String  @unique
+  company      Company  @relation(fields: [companyId], references: [id])
+  kode         String   @unique
   nama         String
   alamat       String?
-  isHeadOffice Boolean @default(false)
-  isActive     Boolean @default(true)
+  isHeadOffice Boolean  @default(false)
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model UserCompany {
+  userId    String
+  companyId String
+  role      String  @default("member")
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  @@id([userId, companyId])
 }
 
 // ==================== HELPDESK TEAM ====================

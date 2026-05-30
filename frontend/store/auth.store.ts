@@ -10,18 +10,21 @@ export interface AuthUser {
   role: string;
   roles: string[];
   permissions: string[];
+  is2FAEnabled?: boolean;
 }
 
 interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
   refreshToken: string | null;
+  companyId: string | null;
   isAuthenticated: boolean;
 
   setAuth: (params: {
     user: AuthUser;
     accessToken: string;
-    refreshToken: string;
+    refreshToken?: string;
+    companyId?: string;
   }) => void;
   setAccessToken: (token: string) => void;
   clearAuth: () => void;
@@ -33,14 +36,21 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
+      companyId: null,
       isAuthenticated: false,
 
-      setAuth: ({ user, accessToken, refreshToken }) => {
+      setAuth: ({ user, accessToken, refreshToken, companyId }) => {
         // Set a lightweight presence cookie so Next.js middleware can detect auth
         if (typeof document !== 'undefined') {
           document.cookie = `gm_auth=1; path=/; max-age=${7 * 24 * 3600}; samesite=strict`;
         }
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+        set({
+          user,
+          accessToken,
+          refreshToken: refreshToken ?? null,
+          companyId: companyId ?? null,
+          isAuthenticated: true,
+        });
       },
 
       setAccessToken: (token) => set({ accessToken: token }),
@@ -53,6 +63,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           accessToken: null,
           refreshToken: null,
+          companyId: null,
           isAuthenticated: false,
         });
       },
@@ -64,6 +75,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
+        companyId: state.companyId,
         isAuthenticated: state.isAuthenticated,
       }),
     },

@@ -1,5 +1,12 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  MinLength,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LoginDto {
   @ApiProperty({ type: String, example: 'admin@erp.com' })
@@ -38,4 +45,47 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty()
   roleId!: string;
+}
+
+export class SendOtpDto {
+  @ApiProperty({ type: String, example: 'user-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+}
+
+export class VerifyOtpDto {
+  @ApiProperty({ type: String, example: 'user-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @ApiProperty({ type: String, example: '123456' })
+  @IsString()
+  @Length(6, 6)
+  code!: string;
+}
+
+export class SelectTenantDto {
+  @ApiProperty({ type: String, example: 'user-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  userId!: string;
+
+  @ApiProperty({ type: String, example: 'company-uuid' })
+  @IsString()
+  @IsNotEmpty()
+  companyId!: string;
+}
+
+export class GoogleCallbackQueryDto {
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  state?: string;
 }

@@ -9,7 +9,7 @@ import axios, {
 import { useAuthStore } from '@/store/auth.store';
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // Track if a token refresh is already in progress to avoid race conditions
 let isRefreshing = false;

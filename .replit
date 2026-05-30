@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-20", "web", "bash"]
 
 [deployment]
 router = "application"
@@ -45,11 +45,11 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd backend && pnpm start:dev"
-waitForPort = 4000
+args = "cd backend && PORT=3001 pnpm start:dev"
+waitForPort = 3001
 
 [agent]
-stack = "PNPM_WORKSPACE"
+stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
 
 [postMerge]
@@ -75,3 +75,15 @@ externalPort = 80
 [[ports]]
 localPort = 23370
 externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+NESTJS_PORT = "4000"

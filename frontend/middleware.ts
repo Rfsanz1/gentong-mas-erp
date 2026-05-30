@@ -4,12 +4,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes accessible without authentication
-const PUBLIC_PATHS = ['/login'];
+const PUBLIC_PATHS = ['/login', '/otp', '/select-tenant', '/auth/callback'];
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
-  // Allow public auth routes
+  // Allow public auth routes (exact match or sub-paths)
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return NextResponse.next();
   }
