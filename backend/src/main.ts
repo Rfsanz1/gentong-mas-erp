@@ -17,12 +17,15 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       if (!origin) { callback(null, true); return; }
+      // Strip port suffix (e.g. https://foo.replit.dev:3001 → https://foo.replit.dev)
+      const bare = origin.replace(/:\d+$/, '');
       const allowed =
         origin.startsWith('http://localhost:') ||
-        origin.endsWith('.replit.dev') ||
-        origin.endsWith('.repl.co') ||
-        origin.endsWith('.replit.app') ||
-        origin.endsWith('.replit.com');
+        bare.endsWith('.replit.dev') ||
+        bare.endsWith('.sisko.replit.dev') ||
+        bare.endsWith('.repl.co') ||
+        bare.endsWith('.replit.app') ||
+        bare.endsWith('.replit.com');
       if (allowed) {
         callback(null, true);
       } else {
