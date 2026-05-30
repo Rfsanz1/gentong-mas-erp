@@ -3,8 +3,9 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import api from '@/lib/api';
+import api, { unwrap } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import type { AuthUser } from '@/store/auth.store';
 import type { AxiosError } from 'axios';
 
 const OTP_LENGTH = 6;
@@ -57,12 +58,22 @@ function OtpForm() {
       setError(null);
 
       try {
-        const { data } = await api.post<{
+        const response = await api.post<{
           accessToken: string;
-          user: { id: string; email: string; name: string | null; is2FAEnabled: boolean };
-        }>('/auth/otp/verify', { userId, code });
+          refreshToken?: string;
+          user: AuthUser;
+        }>('/api/auth/otp/verify', { userId, code });
+      const result = unwrap(response.data) as {
+          accessToken: string;
+          refreshToken?: string;
+          user: AuthUser;
+        };
 
-        setAuth({ user: data.user, accessToken: data.accessToken });
+        setAuth({
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        });
         router.push('/dashboard');
       } catch (err) {
         const e = err as AxiosError<{ message: string }>;
@@ -131,7 +142,7 @@ function OtpForm() {
     setResendMessage(null);
 
     try {
-      await api.post('/auth/otp/send', { userId });
+      await api.post('/api/auth/otp/send', { userId });
       setSecondsLeft(OTP_TIMER_SECONDS);
       setDigits(Array(OTP_LENGTH).fill(''));
       setResendMessage('A new code has been sent to your email.');

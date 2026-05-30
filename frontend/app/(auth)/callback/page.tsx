@@ -6,11 +6,12 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
-import api from '@/lib/api';
+import api, { unwrap } from '@/lib/api';
 import type { AxiosError } from 'axios';
 
 interface MeResponse {
-  userId: string;
+  id?: string;
+  userId?: string;
   email: string;
   roles: string[];
   permissions: string[];
@@ -37,14 +38,15 @@ function CallbackHandler() {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       .then(({ data }) => {
+        const result = unwrap(data) as MeResponse;
         setAuth({
           user: {
-            id: data.userId,
-            email: data.email,
+            id: result.userId ?? result.id ?? 'unknown',
+            email: result.email,
             name: null,
-            role: data.roles[0] ?? 'user',
-            roles: data.roles,
-            permissions: data.permissions,
+            role: result.roles?.[0] ?? 'user',
+            roles: result.roles,
+            permissions: result.permissions,
           },
           accessToken,
           refreshToken,

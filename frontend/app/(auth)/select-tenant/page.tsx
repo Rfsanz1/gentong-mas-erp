@@ -3,8 +3,9 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '@/lib/api';
+import api, { unwrap } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import type { AuthUser } from '@/store/auth.store';
 import type { AxiosError } from 'axios';
 
 interface Company {
@@ -41,18 +42,25 @@ function SelectTenantForm() {
     setError(null);
 
     try {
-      const { data } = await api.post<{
+      const response = await api.post<{
         accessToken: string;
-        user: { id: string; email: string; name: string | null; is2FAEnabled: boolean };
-      }>('/auth/select-tenant', { userId, companyId });
+        refreshToken?: string;
+        user: AuthUser;
+      }>('/api/auth/select-tenant', { userId, companyId });
+      const result = unwrap(response.data) as {
+        accessToken: string;
+        refreshToken?: string;
+        user: AuthUser;
+      };
 
       // Clean up session storage
       sessionStorage.removeItem('userId');
       sessionStorage.removeItem('companies');
 
       setAuth({
-        user: data.user,
-        accessToken: data.accessToken,
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
         companyId,
       });
 

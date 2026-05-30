@@ -81,3 +81,10 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+export function resolveRedirect(role: string): string {
+  const r = role.toLowerCase();
+  if (['sales', 'sales manager'].includes(r)) return '/sales';
+  if (['gudang', 'staff gudang'].includes(r)) return '/gudang';
+  if (['kasir'].includes(r)) return '/pos';
+  return '/dashboard';
+}

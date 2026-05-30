@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import api from '@/lib/api';
-import { useAuthStore } from '@/store/auth.store';
+import api, { unwrap } from '@/lib/api';
+import { useAuthStore, resolveRedirect } from '@/store/auth.store';
 import type { AxiosError } from 'axios';
 import clsx from 'clsx';
 
@@ -49,12 +49,6 @@ interface LoginResult {
   message?: string;
 }
 
-interface ApiEnvelope<T> {
-  success: boolean;
-  data: T;
-  timestamp: string;
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -74,12 +68,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { data: envelope } = await api.post<ApiEnvelope<LoginResult>>(
-        '/api/auth/login',
-        values,
-      );
-
-      const result = envelope.data;
+      const response = await api.post<LoginResult>('/api/auth/login', values);
+      const result = unwrap(response.data) as LoginResult;
 
       // Step 1 → OTP required
       if (result.requiresOtp && result.userId) {
@@ -96,7 +86,8 @@ export default function LoginPage() {
       }
 
       // Step 3 → Full token issued immediately
-      if (result.accessToken && result.user) {
+      const accessToken = result.accessToken ?? result.token;
+      if (accessToken && result.user) {
         setAuth({
           user: {
             id: result.user.id,
@@ -107,10 +98,12 @@ export default function LoginPage() {
             permissions: result.user.permissions,
             is2FAEnabled: result.user.is2FAEnabled,
           },
-          accessToken: result.accessToken,
+          accessToken,
           refreshToken: result.refreshToken,
         });
-        router.push('/dashboard');
+        router.push(resolveRedirect(result.user.role));
+      } else {
+        setServerError('Login gagal. Silakan coba lagi.');
       }
     } catch (err) {
       const error = err as AxiosError<{ message: string }>;
