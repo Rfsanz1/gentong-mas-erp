@@ -105,5 +105,17 @@ export class FinanceController {
   }
 
   // ─── Fixed Assets ─────────────────────────────────────────────────────
-  @Get('fixed-assets') getAssets(@Query() q: any) { return { redirect: '/api/assets', q }; }
+  @Get('fixed-assets') getAssets(@Query() q: any) { return this.svc.getFixedAssets(q); }
+  @Post('fixed-assets') createAsset(@Body() dto: any) { return this.svc.createFixedAsset(dto); }
+  @Put('fixed-assets/:id') updateAsset(@Param('id') id: string, @Body() dto: any) { return this.svc.updateFixedAsset(id, dto); }
+
+  // ─── Expenses ─────────────────────────────────────────────────────────
+  @Get('expenses') getExpenses(@Query() q: any) { return this.svc.getExpenses(q); }
+  @Post('expenses') createExpense(@Body() dto: any) { return this.svc.createExpense(dto); }
+  @Put('expenses/:id') updateExpense(@Param('id') id: string, @Body() dto: any) { return this.svc.updateExpense(id, dto); }
+  @Post('expenses/:id/approve') approveExpense(@Param('id') id: string) { return this.svc.approveExpense(id); }
+
+  // ─── Bank Reconciliation ───────────────────────────────────────────────
+  @Get('bank-reconciliation') getReconciliation(@Query() q: any) { return this.svc.getBankReconciliationItems(q); }
+  @Post('bank-reconciliation') reconcileItems(@Body() dto: any) { return this.svc.reconcileItems(dto); }
 }
