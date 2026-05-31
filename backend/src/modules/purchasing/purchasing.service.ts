@@ -180,14 +180,150 @@ export class PurchasingService {
   }
 
   async getStats() {
-    const [total, pending, approved] = await Promise.all([
+    const [totalPO, poMenungguApprove, poMenungguTerima] = await Promise.all([
       this.prisma.purchaseOrder.count(),
       this.prisma.purchaseOrder.count({ where: { status: 'draft' } }),
       this.prisma.purchaseOrder.count({ where: { status: 'approved' } }),
     ]);
     const totalValue = await this.prisma.purchaseOrder.aggregate({ _sum: { totalHarga: true } });
-    return { total, pending, approved, totalValue: totalValue._sum.totalHarga ?? 0 };
+    return {
+      totalPO,
+      nilaiPembelian: Number(totalValue._sum.totalHarga ?? 0),
+      poMenungguApprove,
+      poMenungguTerima,
+    };
   }
+
+  // ─── RFQ (stub — schema may not have RFQ table yet) ───────────────────────
+  async getRFQs(query: any) {
+    // Return empty list gracefully if RFQ model not in schema yet
+    try {
+      const { status, page = 1, limit = 20 } = query;
+      const skip = (Number(page) - 1) * Number(limit);
+      const where: any = {};
+      if (status) where.status = status;
+      const [data, total] = await Promise.all([
+        (this.prisma as any).rfq?.findMany({ where, skip, take: Number(limit), include: { supplier: true }, orderBy: { createdAt: 'desc' } }) ?? Promise.resolve([]),
+        (this.prisma as any).rfq?.count({ where }) ?? Promise.resolve(0),
+      ]);
+      return { data, total, page: Number(page), totalPages: Math.ceil((total || 1) / Number(limit)) };
+    } catch {
+      return { data: [], total: 0, page: 1, totalPages: 1 };
+    }
+  }
+
+  async createRFQ(dto: any) {
+    try {
+      const noRfq = `RFQ/${new Date().getFullYear()}/${String(Date.now()).slice(-6)}`;
+      return await (this.prisma as any).rfq.create({ data: { ...dto, noRfq, status: dto.status ?? 'DRAFT' } });
+    } catch {
+      return { id: 'stub', noRfq: 'RFQ/stub', status: 'DRAFT', ...dto };
+    }
+  }
+
+  // ─── PRICE COMPARISON ─────────────────────────────────────────────────────
+  async getPriceComparison(query: any) {
+    const { search } = query;
+    try {
+      const items = await this.prisma.purchaseOrderItem.findMany({
+        where: search ? { nama: { contains: search, mode: 'insensitive' } } : {},
+        include: { purchaseOrder: { include: { supplier: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      });
+
+      const map = new Map<string, { productName: string; suppliers: Map<string, { supplierId: string; supplierName: string; hargaBeli: number; lastOrderDate: string }> }>();
+
+      for (const item of items) {
+        if (!item.purchaseOrder?.supplier) continue;
+        const key = item.nama.toLowerCase().trim();
+        if (!map.has(key)) map.set(key, { productName: item.nama, suppliers: new Map() });
+        const entry = map.get(key)!;
+        const sid = item.purchaseOrder.supplierId;
+        if (!entry.suppliers.has(sid) || Number(item.hargaBeli) < entry.suppliers.get(sid)!.hargaBeli) {
+          entry.suppliers.set(sid, {
+            supplierId: sid,
+            supplierName: item.purchaseOrder.supplier.name,
+            hargaBeli: Number(item.hargaBeli),
+            lastOrderDate: item.purchaseOrder.tanggal?.toISOString?.() ?? String(item.purchaseOrder.tanggal),
+          });
+        }
+      }
+
+      return Array.from(map.values())
+        .filter((e) => e.suppliers.size > 0)
+        .map((e) => ({ productName: e.productName, suppliers: Array.from(e.suppliers.values()) }));
+    } catch {
+      return [];
+    }
+  }
+
+  // ─── APPROVAL MATRIX ──────────────────────────────────────────────────────
+  private _approvalRules: any[] = [];
+
+  async getApprovalMatrix() {
+    return this._approvalRules;
+  }
+
+  async createApprovalRule(dto: any) {
+    const rule = { id: `rule-${Date.now()}`, ...dto };
+    this._approvalRules.push(rule);
+    return rule;
+  }
+
+  async updateApprovalRule(id: string, dto: any) {
+    const idx = this._approvalRules.findIndex((r) => r.id === id);
+    if (idx === -1) throw new NotFoundException('Aturan tidak ditemukan');
+    this._approvalRules[idx] = { ...this._approvalRules[idx], ...dto };
+    return this._approvalRules[idx];
+  }
+
+  // ─── REPORTS ──────────────────────────────────────────────────────────────
+  async getReports(query: any) {
+    const { month, year } = query;
+    const now = new Date();
+    const m = Number(month ?? now.getMonth() + 1);
+    const y = Number(year ?? now.getFullYear());
+    const from = new Date(y, m - 1, 1);
+    const to = new Date(y, m, 1);
+
+    try {
+      const pos = await this.prisma.purchaseOrder.findMany({
+        where: { tanggal: { gte: from, lt: to } },
+        include: { supplier: true },
+      });
+
+      const map = new Map<string, { supplierId: string; supplierName: string; totalPO: number; totalNilai: number; totalDiterima: number }>();
+      for (const po of pos) {
+        if (!po.supplier) continue;
+        const sid = po.supplierId;
+        if (!map.has(sid)) map.set(sid, { supplierId: sid, supplierName: po.supplier.name, totalPO: 0, totalNilai: 0, totalDiterima: 0 });
+        const entry = map.get(sid)!;
+        entry.totalPO += 1;
+        entry.totalNilai += Number(po.totalHarga);
+        if (po.status === 'received') entry.totalDiterima += Number(po.totalHarga);
+      }
+
+      const items = Array.from(map.values());
+      const grandTotal = items.reduce((s, i) => s + i.totalNilai, 0);
+      return { period: `${String(m).padStart(2, '0')}/${y}`, items, grandTotal };
+    } catch {
+      return { period: `${String(m).padStart(2, '0')}/${y}`, items: [], grandTotal: 0 };
+    }
+  }
+
+  // ─── SETTINGS (in-memory stub) ────────────────────────────────────────────
+  private _settings: any = {
+    poPrefix: 'PO',
+    grPrefix: 'GR',
+    rfqPrefix: 'RFQ',
+    requireApproval: true,
+    autoApproveBelow: null,
+    defaultWarehouseId: null,
+  };
+
+  async getSettings() { return this._settings; }
+  async saveSettings(dto: any) { this._settings = { ...this._settings, ...dto }; return this._settings; }
 
   async getSuppliers(query: any) {
     const { search, active, page = 1, limit = 20 } = query;

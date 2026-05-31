@@ -149,4 +149,61 @@ export class PurchasingController {
   @ApiResponse(R200) @ApiResponse(R401) @ApiResponse(R404)
   @Delete('suppliers/:id')
   deleteSupplier(@Param('id') id: string) { return this.svc.deleteSupplier(id); }
+
+  // ─── RFQ ──────────────────────────────────────────────────────────────────
+  @ApiOperation({ summary: 'Daftar Request for Quotation' })
+  @ApiQuery({ name: 'page', required: false }) @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Get('rfq')
+  getRFQs(@Query() q: any) { return this.svc.getRFQs(q); }
+
+  @ApiOperation({ summary: 'Buat RFQ baru' })
+  @ApiResponse(R201) @ApiResponse(R401)
+  @Post('rfq')
+  createRFQ(@Body() dto: any) { return this.svc.createRFQ(dto); }
+
+  // ─── PRICE COMPARISON ─────────────────────────────────────────────────────
+  @ApiOperation({ summary: 'Perbandingan harga barang antar supplier' })
+  @ApiQuery({ name: 'search', required: false })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Get('price-comparison')
+  getPriceComparison(@Query() q: any) { return this.svc.getPriceComparison(q); }
+
+  // ─── APPROVAL MATRIX ──────────────────────────────────────────────────────
+  @ApiOperation({ summary: 'Daftar aturan approval matrix' })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Get('approval-matrix')
+  getApprovalMatrix() { return this.svc.getApprovalMatrix(); }
+
+  @ApiOperation({ summary: 'Buat aturan approval baru' })
+  @ApiResponse(R201) @ApiResponse(R401)
+  @Post('approval-matrix')
+  createApprovalRule(@Body() dto: any) { return this.svc.createApprovalRule(dto); }
+
+  @ApiOperation({ summary: 'Update aturan approval' })
+  @ApiParam({ name: 'id' })
+  @ApiResponse(R200) @ApiResponse(R401) @ApiResponse(R404)
+  @Put('approval-matrix/:id')
+  updateApprovalRule(@Param('id') id: string, @Body() dto: any) {
+    return this.svc.updateApprovalRule(id, dto);
+  }
+
+  // ─── REPORTS ──────────────────────────────────────────────────────────────
+  @ApiOperation({ summary: 'Laporan pembelian per periode' })
+  @ApiQuery({ name: 'month', required: false }) @ApiQuery({ name: 'year', required: false })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Get('reports')
+  getReports(@Query() q: any) { return this.svc.getReports(q); }
+
+  // ─── SETTINGS ─────────────────────────────────────────────────────────────
+  @ApiOperation({ summary: 'Ambil konfigurasi modul purchasing' })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Get('settings')
+  getSettings() { return this.svc.getSettings(); }
+
+  @ApiOperation({ summary: 'Simpan konfigurasi modul purchasing' })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Put('settings')
+  saveSettings(@Body() dto: any) { return this.svc.saveSettings(dto); }
 }

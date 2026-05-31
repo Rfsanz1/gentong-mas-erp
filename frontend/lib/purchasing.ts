@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from '@/lib/api-service';
+import { apiGet, apiPost, apiPut, apiPatch } from '@/lib/api-service';
 
 export type PurchaseOrderItem = {
   id: string;
