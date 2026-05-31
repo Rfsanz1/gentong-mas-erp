@@ -213,4 +213,80 @@ export class InventoryService {
       orderBy: { product: { name: 'asc' } },
     });
   }
+
+  async createWarehouse(dto: any) {
+    return this.prisma.warehouse.create({ data: { ...dto, active: dto.active ?? true } });
+  }
+
+  async updateWarehouse(id: string, dto: any) {
+    return this.prisma.warehouse.update({ where: { id }, data: dto });
+  }
+
+  // ─── REORDER RULES (in-memory — no Prisma model yet) ─────────────────────
+  private _reorderRules: any[] = [];
+
+  async getReorderRules() {
+    // Try Prisma first, fall back to in-memory
+    try {
+      const rules = await (this.prisma as any).reorderRule?.findMany({
+        include: { product: true, warehouse: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (rules) {
+        return rules.map((r: any) => ({
+          ...r,
+          productName: r.product?.name ?? r.productId,
+          warehouseName: r.warehouse?.name ?? null,
+        }));
+      }
+    } catch {}
+    return this._reorderRules;
+  }
+
+  async createReorderRule(dto: any) {
+    try {
+      const rule = await (this.prisma as any).reorderRule.create({
+        data: {
+          productId: dto.productId,
+          warehouseId: dto.warehouseId ?? null,
+          minQty: dto.minQty ?? 0,
+          maxQty: dto.maxQty ?? 0,
+          reorderQty: dto.reorderQty ?? 1,
+          leadTimeDays: dto.leadTimeDays ?? 7,
+          active: dto.active ?? true,
+        },
+        include: { product: true, warehouse: true },
+      });
+      return { ...rule, productName: rule.product?.name, warehouseName: rule.warehouse?.name ?? null };
+    } catch {
+      const rule = { id: `rr-${Date.now()}`, ...dto, productName: dto.productId, warehouseName: null };
+      this._reorderRules.push(rule);
+      return rule;
+    }
+  }
+
+  async updateReorderRule(id: string, dto: any) {
+    try {
+      const rule = await (this.prisma as any).reorderRule.update({
+        where: { id },
+        data: dto,
+        include: { product: true, warehouse: true },
+      });
+      return { ...rule, productName: rule.product?.name, warehouseName: rule.warehouse?.name ?? null };
+    } catch {
+      const idx = this._reorderRules.findIndex((r) => r.id === id);
+      if (idx !== -1) this._reorderRules[idx] = { ...this._reorderRules[idx], ...dto };
+      return this._reorderRules[idx] ?? { id, ...dto };
+    }
+  }
+
+  async deleteReorderRule(id: string) {
+    try {
+      return await (this.prisma as any).reorderRule.delete({ where: { id } });
+    } catch {
+      const idx = this._reorderRules.findIndex((r) => r.id === id);
+      if (idx !== -1) this._reorderRules.splice(idx, 1);
+      return { id };
+    }
+  }
 }

@@ -120,6 +120,40 @@ export class InventoryController {
   @Get('warehouses')
   getWarehouses() { return this.svc.getWarehouses(); }
 
+  @ApiOperation({ summary: 'Tambah gudang baru' })
+  @ApiResponse(R201) @ApiResponse(R401)
+  @Post('warehouses')
+  createWarehouse(@Body() dto: any) { return this.svc.createWarehouse(dto); }
+
+  @ApiOperation({ summary: 'Update data gudang' })
+  @ApiParam({ name: 'id' })
+  @ApiResponse(R200) @ApiResponse(R401) @ApiResponse(R404)
+  @Put('warehouses/:id')
+  updateWarehouse(@Param('id') id: string, @Body() dto: any) { return this.svc.updateWarehouse(id, dto); }
+
+  // ─── REORDER RULES ────────────────────────────────────────────────────────
+  @ApiOperation({ summary: 'Daftar reorder rules' })
+  @ApiResponse(R200) @ApiResponse(R401)
+  @Get('reorder-rules')
+  getReorderRules() { return this.svc.getReorderRules(); }
+
+  @ApiOperation({ summary: 'Buat reorder rule baru' })
+  @ApiResponse(R201) @ApiResponse(R401)
+  @Post('reorder-rules')
+  createReorderRule(@Body() dto: any) { return this.svc.createReorderRule(dto); }
+
+  @ApiOperation({ summary: 'Update reorder rule' })
+  @ApiParam({ name: 'id' })
+  @ApiResponse(R200) @ApiResponse(R401) @ApiResponse(R404)
+  @Put('reorder-rules/:id')
+  updateReorderRule(@Param('id') id: string, @Body() dto: any) { return this.svc.updateReorderRule(id, dto); }
+
+  @ApiOperation({ summary: 'Hapus reorder rule' })
+  @ApiParam({ name: 'id' })
+  @ApiResponse(R200) @ApiResponse(R401) @ApiResponse(R404)
+  @Delete('reorder-rules/:id')
+  deleteReorderRule(@Param('id') id: string) { return this.svc.deleteReorderRule(id); }
+
   @ApiOperation({ summary: 'Daftar kategori produk' })
   @ApiResponse(R200) @ApiResponse(R401)
   @Get('categories')
